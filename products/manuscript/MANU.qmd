@@ -42,7 +42,7 @@ _Write a summary of your project._
 _Provide enough background on your topic that others can understand the why and how of your analysis_ 
 
 ## Description of data and data source
-The source of 
+The data used in this project was obtained from multiple publicly available sources. Data pertaining to counts of HIV-related deaths in for Hispanics, non-Hispanic Whites, and non-Hispanic Blacks and populations for these groups was obtained from OASIS, the Georgia Department of Public Health's online data repository. This analyse will currently focus on the year 2018-2020, but may be expanded to 2016-2020 moving forward. The data on these years will be obtained and processed identically to ways later described. Date on new HIV diagnoses and SDOH, particularly related to HIV were obtained from AIDSVu. Data on poverty rates was obtained from Georgia Data, a data source provided by the University of Georgia. All data described was aggregated at the county level. 
 
 ## Questions/Hypotheses to be addressed
 Question: Can HIV death rates be predicted by social determinants of health like poverty and/ or by HIV related outcomes (new diagnoses, prevalence PrEP use, etc?)
