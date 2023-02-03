@@ -1,7 +1,7 @@
 ---
-title: "Example Manuscript Template for a Data Analysis Project"
-subtitle: ""
-author: Andreas Handel
+title: "Manuscript Template for a Data Analysis Project"
+subtitle: "Exploring Factors influencing HIV Death-to-Case ratio in the United States and Puerto Rico -- 2020"
+author: Hayley Hemme
 date: "`r Sys.Date()`"
 format:
   docx:
@@ -22,8 +22,10 @@ This uses MS Word as output format. [See here](https://quarto.org/docs/output-fo
 # load a few R packages
 library(here)
 library(knitr)
+library(tidyverse)
+library(readxl)
+library(lubridate)
 ```
-
 
 
 # Summary/Abstract
@@ -39,10 +41,20 @@ _Write a summary of your project._
 _Provide enough background on your topic that others can understand the why and how of your analysis_ 
 
 ## Description of data and data source
-_Describe what the data is, what it contains, where it is from, etc. Eventually this might be part of a methods section._
+The data used in this analysis was retrieved from AIDSVu, a publicly available data source presented by Emory University's Rollins School of Public Health and partners, whose mission is to make HIV data widely available and accessible. AIDSVu compiled the data used in this analysis from the CDC. These datasets contain data collected at the state-level from 2020 on: new HIV diagnoses, HIV-related deaths, counts/ percentages of those with late HIV diagnoses, viral suppression, PrEP coverage, HIV prevalence, and state testing, and social determinants of health. These datasets contain demographic-level information for sex, race/ethnicity, transmission category, among others. 
 
 ## Questions/Hypotheses to be addressed
-_State the research questions you plan to answer with this analysis._
+Question: Can HIV mortality-prevalence ratio at the state-level in the United States be predicted by social determinant of health (ex. poverty rates), percentage of people living with HIV (PLWH) who are virally suppressed, and/ or percentage of late diagnoses/ percentage of minority HIV deaths? 
+
+https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7842853/
+
+where mortality-prevalence ratio = (number of deaths/number of prevalant cases) / prevelance rate
+
+H0 : Death-to-case ratio is not correlated with differences in demographic factors, social determinants of health, testing prevalence, or factors influencing HIV outcomes, such as late diagnoses, viral suppression, and PrEP coverage.
+
+HA : Death-to-case ratio is  correlated with differences in demographic factors, social determinants of health, testing prevalence, or factors influencing HIV outcomes, such as late diagnoses, viral suppression, and PrEP coverage. 
+
+Special interest will be given to those disproportionately impacted by HIV, including Non-Hispanic Black populations and the MSM community. 
 
 To cite other work (important everywhere, but likely happens first in introduction), make sure your references are in the bibtex file specified in the YAML header above (here `dataanalysis_template_references.bib`) and have the right bibtex key. Then you can include like this:
 
@@ -62,10 +74,136 @@ _As applicable, explain where and how you got the data. If you directly import t
 
 ## Data import and cleaning
 _Write code that reads in the file and cleans it so it's ready for analysis. Since this will be fairly long code for most datasets, it might be a good idea to have it in one or several R scripts. If that is the case, explain here briefly what kind of cleaning/processing you do, and provide more details and well documented code somewhere (e.g. as supplement in a paper). All materials, including files that contain code, should be commented well so everyone can follow along._
+Loading the datasets.
+```{r}
+deaths <- read_xlsx("../../data/raw_data/AIDSVu_State_Death_2020.xlsx", skip = 3)
+dx <- read_xlsx("../../data/raw_data/AIDSVu_State_NewDX_2020.xlsx", skip = 3)
+```
+
+##Selecting only states/ districts in the South geographic region, as defined by the CDC.
+```{r}
+deaths <- deaths %>% filter(State %in% c("Alabama", "Arkansas", "Delaware", "Washington, D.C.", "Florida", "Georgia", "Kentucky", "Louisiana", "Maryland", "Mississippi", "North Carolina", "Oklahoma", "South Carolina", "Tennessee", "Texas", "Virginia", "West Virginia")) %>% 
+  select(!contains(c("Rate Stability", "Percent", "Case")))
+
+sex_deaths_sub <- deaths %>% select(1:7)
+race_deaths_sub <- deaths  %>% select(c(1:5, 8:14))
+age_deaths_sub <- deaths  %>% select(c(1:5, 15:19))
+
+sex_deaths_sub <- sex_deaths_sub %>% pivot_longer(6:7, names_to = "Sex", values_to = "Death Rate by Sex")
+sex_deaths_sub$Sex <- gsub(" Death Rate", "", sex_deaths_sub$Sex)
+sex_deaths_sub <- sex_deaths_sub %>% mutate_if(is.character, as.factor) %>% 
+  mutate(`GEO ID` = as.factor(`GEO ID`))
+
+race_deaths_sub <- race_deaths_sub  %>% pivot_longer(6:12, names_to = "Race/Ethnicity", values_to = "Death Rate by Race/Ethnicity")
+race_deaths_sub$`Race/Ethnicity` <- gsub(" Death Rate", "",race_deaths_sub$`Race/Ethnicity`)
+race_deaths_sub <- race_deaths_sub %>% mutate_if(is.character, as.factor) %>% 
+  mutate(`GEO ID` = as.factor(`GEO ID`))
+
+age_deaths_sub <- age_deaths_sub %>% pivot_longer(6:10, names_to = "Age_Group", values_to = "Death Rate by Age Group")
+age_deaths_sub$Age_Group <- gsub("Age ", "", age_deaths_sub$Age_Group)
+age_deaths_sub$Age_Group <- gsub(" Death Rate", "", age_deaths_sub$Age_Group)
+
+age_deaths_sub <- age_deaths_sub %>% mutate_if(is.character, as.factor) %>% 
+  mutate(`GEO ID` = as.factor(`GEO ID`))
+```
 
 
+```{r}
+dx <- dx %>% filter(State %in% c("Alabama", "Arkansas", "Delaware", "Washington, D.C.", "Florida", "Georgia", "Kentucky", "Louisiana", "Maryland", "Mississippi", "North Carolina", "Oklahoma", "South Carolina", "Tennessee", "Texas", "Virginia", "West Virginia")) %>% 
+  select(!contains(c("Rate Stability", "Percent", "Case")))
+
+sex_dx_sub <- dx %>% select(1:7)
+race_dx_sub <- dx %>% select(c(1:5, 8:14))
+age_dx_sub <- dx %>% select(c(1:5, 15:19))
+
+sex_dx_sub <- sex_dx_sub %>% pivot_longer(6:7, names_to = "Sex", values_to = "New Diagnoses Rate by Sex")
+sex_dx_sub$Sex <- gsub("New Diagnoses ", "", sex_dx_sub$Sex)
+sex_dx_sub$Sex <- gsub(" Rate", "", sex_dx_sub$Sex)
+sex_dx_sub <- sex_dx_sub %>% mutate_if(is.character, as.factor) %>% 
+  mutate(`GEO ID` = as.factor(`GEO ID`))
+
+race_dx_sub <- race_dx_sub  %>% pivot_longer(6:12, names_to = "Race/Ethnicity", values_to = "New Diagnoses Rate by Race/Ethnicity")
+race_dx_sub$`Race/Ethnicity` <- gsub("New Diagnoses ", "", race_dx_sub$`Race/Ethnicity`)
+race_dx_sub$`Race/Ethnicity` <- gsub(" Rate", "", race_dx_sub$`Race/Ethnicity`)
+race_dx_sub <- race_dx_sub %>% mutate_if(is.character, as.factor) %>% 
+  mutate(`GEO ID` = as.factor(`GEO ID`))
+
+age_dx_sub <- age_dx_sub %>% pivot_longer(6:10, names_to = "Age_Group", values_to = "New Diagnoses Rate by Age Group")
+age_dx_sub$Age_Group <- gsub("New Diagnoses Age ", "", age_dx_sub$Age_Group)
+age_dx_sub$Age_Group <- gsub(" Rate", "", age_dx_sub$Age_Group)
+age_dx_sub <- age_dx_sub %>% mutate_if(is.character, as.factor) %>% 
+  mutate(`GEO ID` = as.factor(`GEO ID`))
+```
+
+
+Calculate mortality to incidence ratio (MIR) "The mortality-to-incidence ratio (MIR) can be computed from readily accessible, public-use data on cancer incidence and mortality, and a high MIR value is an indicator of poor survival relative to incidence."
+
+The IMR (incidence:mortality ratio) is defined as the ratio of the number of people who become HIV infected per year to the number of people among those already infected who die (from any cause) per year. When this number is greater than one, the size of the population of PLHIV grows; when it is less than one, the size of that population shrinks 
+https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6201869/#!po=16.6667
+
+https://www.kff.org/global-health-policy/issue-brief/assessing-global-hiv-targets-in-pepfar-countries-a-dashboard/
+```{r}
+sex_df <- full_join(sex_deaths_sub, sex_dx_sub)
+
+sex_df  <- sex_df %>% group_by(State, Sex) %>%
+  mutate(d2c_ratio_sex = sum(`Death Rate by Sex`/`New Diagnoses Rate by Sex`)) %>% 
+  mutate(d2c_ratio_sex = round(d2c_ratio_sex, 1))
+
+race_df <- full_join(race_deaths_sub, race_dx_sub)
+
+race_df <- race_df %>% group_by(State, `Race/Ethnicity`) %>%
+  mutate(d2c_ratio_race = sum(`Death Rate by Race/Ethnicity`/`New Diagnoses Rate by Race/Ethnicity`)) %>% 
+  mutate(d2c_ratio_race = round(d2c_ratio_race, 1))
+
+age_df <- full_join(age_deaths_sub, age_dx_sub)
+
+age_df <- age_df %>% group_by(State, Age_Group) %>%
+  mutate(d2c_ratio_age = sum(`Death Rate by Age Group`/`New Diagnoses Rate by Age Group`)) %>% 
+  mutate(d2c_ratio_age = round(d2c_ratio_age, 1))
+
+saveRDS(sex_df, "../../data/sex_df.rds")
+saveRDS(race_df, "../../data/race_df.rds")
+saveRDS(age_df, "../../data/age_df.rds")
+```
+
+```{r}
+rm(list=ls())
+
+sex_df <- readRDS("../../data/sex_df.rds")
+race_df <- readRDS("../../data/race_df.rds")
+age_df <- readRDS("../../data/age_df.rds")
+
+```
+
+```{r}
+
+```
+
+
+```{r}
+df <- full_join(deaths, new_dx)
+df <- full_join(df, prep)
+df<- full_join(df, prev)
+
+df <- df %>% select(!contains("Rate Stability"))
+
+saveRDS(df, "../../data/raw_data/raw_df.rds")
+
+rm(list=ls())
+rm(list=ls())
+
+prep <- read_xlsx("../../data/raw_data/AIDSVu_State_PrEP_2020.xlsx", skip = 3)
+prep <- prep %>% select(!contains("Rate Stability"))
+
+df <- readRDS("../../data/raw_data/raw_df.rds")
+
+late_dx <- read_xlsx("../../data/raw_data/AIDSVu_State_LateDiagnoses_2020.xlsx", skip = 3)
+sdoh <- read_xlsx("../../data/raw_data/AIDSVu_State_SDOH_2020.xlsx", skip = 3)
+v_sup <- read_xlsx("../../data/raw_data/AIDSVu_State_ViralSuppression_2020.xlsx", skip = 3)
+testing  <- read_xlsx("../../data/raw_data/AIDSVu_State_Testing_2020.xlsx", skip = 3)
+```
 ## Statistical analysis
-_Explain anything related to your statistical analyses._
+Explore central tendency across demographic groups. Fit a poisson regression model predicting death-to-case ratio from percentage with x SDOH variables and percentage of x demographic group. 
 
 
 {{< pagebreak >}}
