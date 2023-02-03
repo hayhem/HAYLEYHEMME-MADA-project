@@ -12,11 +12,9 @@ bibliography: ../dataanalysis_template_references.bib
 csl: ../apa.csl
 ---
 
-The structure below is one possible setup for a data analysis project (including the course project). For a manuscript, adjust as needed. 
-You don't need to have exactly these sections, but the content covering those sections should be addressed.
+The structure below is one possible setup for a data analysis project (including the course project). For a manuscript, adjust as needed. You don't need to have exactly these sections, but the content covering those sections should be addressed.
 
 This uses MS Word as output format. [See here](https://quarto.org/docs/output-formats/ms-word.html) for more information. You can switch to other formats, like html or pdf. See [the Quarto documentation](https://quarto.org/) for other formats.
-
 
 ```{r, echo=FALSE, message=FALSE}
 # load a few R packages
@@ -28,27 +26,27 @@ library(lubridate)
 library(stringr)
 ```
 
-
 # Summary/Abstract
-_Write a summary of your project._
 
+*Write a summary of your project.*
 
 {{< pagebreak >}}
 
-
-# Introduction 
+# Introduction
 
 ## General Background Information
-_Provide enough background on your topic that others can understand the why and how of your analysis_ 
+
+*Provide enough background on your topic that others can understand the why and how of your analysis*
 
 ## Description of data and data source
-The data used in this project was obtained from multiple publicly available sources. Data pertaining to counts of HIV-related deaths in for Hispanics, non-Hispanic Whites, and non-Hispanic Blacks and populations for these groups was obtained from OASIS, the Georgia Department of Public Health's online data repository. This analyse will currently focus on the year 2018-2020, but may be expanded to 2016-2020 moving forward. The data on these years will be obtained and processed identically to ways later described. Date on new HIV diagnoses and SDOH, particularly related to HIV were obtained from AIDSVu. Data on poverty rates was obtained from Georgia Data, a data source provided by the University of Georgia. All data described was aggregated at the county level. 
+
+The data used in this project was obtained from multiple publicly available sources. Data pertaining to counts of HIV-related deaths in for Hispanics, non-Hispanic Whites, and non-Hispanic Blacks and populations for these groups was obtained from [OASIS](https://oasis.state.ga.us/), the Georgia Department of Public Health's online data repository. This analyse will currently focus on the year 2018-2020, but may be expanded to 2016-2020 moving forward. The data on these years will be obtained and processed identically to ways later described. Date on new HIV diagnoses and SDOH, particularly related to HIV were obtained from [AIDSVu](https://aidsvu.org/resources/#/datasets). Data on poverty rates was obtained from [Georgia Data](https://georgiadata.org/), a data source provided by the the Carl Vinson Institute of Government at the University of Georgia. All data described was aggregated at the county level.
 
 ## Questions/Hypotheses to be addressed
+
 Question: Can HIV death rates be predicted by social determinants of health like poverty and/ or by HIV related outcomes (new diagnoses, prevalence PrEP use, etc?)
 
-H0 : There is no correlation between HIV-related deaths and SDOH or HIV-related outcomes.
-Ha : There is a correlation between HIV-related deaths and SDOH or HIV-related outcomes.
+H0 : There is no correlation between HIV-related deaths and SDOH or HIV-related outcomes. Ha : There is a correlation between HIV-related deaths and SDOH or HIV-related outcomes.
 
 To cite other work (important everywhere, but likely happens first in introduction), make sure your references are in the bibtex file specified in the YAML header above (here `dataanalysis_template_references.bib`) and have the right bibtex key. Then you can include like this:
 
@@ -56,19 +54,18 @@ Examples of reproducible research projects can for instance be found in [@mckay2
 
 {{< pagebreak >}}
 
+# Methods
 
-# Methods 
-
-_Describe your methods. That should describe the data, the cleaning processes, and the analysis approaches. You might want to provide a shorter description here and all the details in the supplement._
-
+*Describe your methods. That should describe the data, the cleaning processes, and the analysis approaches. You might want to provide a shorter description here and all the details in the supplement.*
 
 ## Data aquisition
-_As applicable, explain where and how you got the data. If you directly import the data from an online source, you can combine this section with the next._
 
+*As applicable, explain where and how you got the data. If you directly import the data from an online source, you can combine this section with the next.*
 
 ## Data import and cleaning
-_Write code that reads in the file and cleans it so it's ready for analysis. Since this will be fairly long code for most datasets, it might be a good idea to have it in one or several R scripts. If that is the case, explain here briefly what kind of cleaning/processing you do, and provide more details and well documented code somewhere (e.g. as supplement in a paper). All materials, including files that contain code, should be commented well so everyone can follow along._
-Loading the datasets from OASIS for deaths and population (Hispanic, NH White, NH Black) for persons ages 13-59 from 2018 to 2020.
+
+*Write code that reads in the file and cleans it so it's ready for analysis. Since this will be fairly long code for most datasets, it might be a good idea to have it in one or several R scripts. If that is the case, explain here briefly what kind of cleaning/processing you do, and provide more details and well documented code somewhere (e.g. as supplement in a paper). All materials, including files that contain code, should be commented well so everyone can follow along.* Loading the datasets from OASIS for deaths and population (Hispanic, NH White, NH Black) for persons ages 13-59 from 2018 to 2020.
+
 ```{r warning=FALSE}
 setwd("../../")
 his_deaths <- read_xlsx("data/raw_data/hivdeaths_his_1820.xlsx", skip = 1)
@@ -81,6 +78,7 @@ nhb_pop <- read_xlsx("data/raw_data/pop_nhb_1820.xlsx", skip = 1)
 ```
 
 Loading dataset from AIDSVu for social determinants of health (2020) and new HIV diagnoses from 2018 to 2020.
+
 ```{r warning=FALSE}
 setwd("../../")
 sdoh <- read_xlsx("data/raw_data/AIDSVu_County_SDOH_2020.xlsx", skip = 3)
@@ -99,8 +97,8 @@ dx20 <- dx20 %>%  filter(State == "Georgia") %>%
   select(!contains(c("Rate Stability", "Percent", "Case")))
 ```
 
-
 Let's load data from Georgia Data on Poverty rates in Georgia by race/ ethnicity for the period 2016-2020.
+
 ```{r warning = false}
 setwd("../../")
 pov <- read_xlsx("data/raw_data/economics_22.xlsx", sheet = "poverty") 
@@ -109,6 +107,7 @@ glimpse(pov)
 ```
 
 We'll just be using the data from the "2016-2020 Persons Below Poverty Level" by race/ethnicity. We'll also change the text formatting of County to match the other data frames.
+
 ```{r}
 pov <- pov %>%  select(1, starts_with("2016-2020 Persons Below Poverty Level"))
 
@@ -116,6 +115,7 @@ pov$County <- str_to_title(pov$County)
 ```
 
 Let's do some cleaning on the OASIS data. We'll remove extra columns and rows, as well as rows with "Selected ages/sexes total", pivot Year and Deaths into long format, and create the new variable for race/ethnicity.
+
 ```{r}
 his_deaths <- his_deaths[c(-1,-2387:-2414),-7]
 his_deaths <- his_deaths %>% filter(!grepl("Selected", Age)) %>% filter(!grepl("Selected", Sex)) %>%
@@ -134,6 +134,7 @@ nhb_deaths <- nhb_deaths %>% filter(!grepl("Selected", Age)) %>% filter(!grepl("
 ```
 
 Next, we'll merge the datasets into one dataframe, and remove the original datasets from the environment.
+
 ```{r}
 deaths <- full_join(his_deaths, nhw_deaths)
 deaths <- full_join(deaths, nhb_deaths)
@@ -142,6 +143,7 @@ rm(his_deaths, nhw_deaths, nhb_deaths)
 ```
 
 Next, let's clean up the dataset for population using a similar method.
+
 ```{r}
 his_pop <- his_pop[c(-1,-2387:-2412),-7]
 his_pop <- his_pop %>% filter(!grepl("Selected", Age)) %>% filter(!grepl("Selected", Sex)) %>% 
@@ -160,6 +162,7 @@ nhb_pop <- nhb_pop %>% filter(!grepl("Selected", Age)) %>% filter(!grepl("Select
 ```
 
 Merging datasets and cleaning the original from the environment.
+
 ```{r}
 pop <- full_join(his_pop, nhw_pop)
 pop <- full_join(pop, nhb_pop)
@@ -168,11 +171,13 @@ rm(his_pop, nhw_pop, nhb_pop)
 ```
 
 Next, let's merge the two OASIS dataframes.
+
 ```{r}
 df <- full_join(deaths, pop, by = c("Geography", "Sex", "Age", "Year", "Race_Ethnicity"))
 ```
 
 Next, let's create a new variable for Public Health District, change some variable to factors, and rename the Age variable and Geography variable.
+
 ```{r}
 df <- df %>% rename(County = Geography) %>% 
   mutate(District = case_when(County %in% c("Bartow", "Catoosa", "Chattooga", "Dade", "Floyd", "Gordon", "Haralson", "Paulding", "Polk", "Walker") ~ "1-1",
@@ -203,6 +208,7 @@ df <- df %>% rename(County = Geography) %>%
 ```
 
 Let's clean up the Age_Group variable by removing text
+
 ```{r}
 df$Age_Group <- str_replace(df$Age_Group, " Adolescence", "")
 df$Age_Group <- str_replace(df$Age_Group, " Early Adulthood", "")
@@ -213,15 +219,18 @@ df$Age_Group <- str_replace(df$Age_Group, " Middle Adulthood", "")
 ```{r}
 glimpse(df)
 ```
+
 Things are looking good so far!
 
 Now let's move onto the AIDSVu data. First, we'll merge all new HIV diagnoses from 2018-2020 into one dataframe
+
 ```{r}
 dx <- full_join(dx18, dx19)
 dx <- full_join(dx, dx20)
 ```
 
-Let's remove columns for race/ethnicities other than Hispanic, NH White, and NH Black, as well as some other variables we won't be using in this analysis. We will also rename county and create the district variable. 
+Let's remove columns for race/ethnicities other than Hispanic, NH White, and NH Black, as well as some other variables we won't be using in this analysis. We will also rename county and create the district variable.
+
 ```{r}
 dx <- dx %>% select(!contains(c("Asian", "American", "Multiracial", "Hawaiian", "MSM", "2013", "GEO ID", "State")))%>% 
   rename(County = "County Name") 
@@ -250,6 +259,7 @@ dx <-  dx %>% mutate(District = case_when(County %in% c("Bartow", "Catoosa", "Ch
 ```
 
 Things are looking pretty good so frame, so let's save these dataframes.
+
 ```{r}
 saveRDS(df, "../../data/df.rds")
 saveRDS(dx, "../../data/dx.rds")
@@ -258,22 +268,22 @@ saveRDS(pov, "../../data/pov.rds")
 ```
 
 Clear the environment and start fresh.
+
 ```{r}
 
 ```
-## Statistical analysis
-Explore central tendency across demographic groups. Fit a poisson regression model predicting death-to-case ratio from percentage with x SDOH variables and percentage of x demographic group. 
 
+## Statistical analysis
+
+Explore central tendency across demographic groups. Fit a poisson regression model predicting death-to-case ratio from percentage with x SDOH variables and percentage of x demographic group.
 
 {{< pagebreak >}}
-
 
 # Results
 
 ## Exploratory/Descriptive analysis
 
-_Use a combination of text/tables/figures to explore and describe your data. Show the most important descriptive results here. Additional ones should go in the supplement. Even more can be in the R and Quarto files that are part of your project._
-
+*Use a combination of text/tables/figures to explore and describe your data. Show the most important descriptive results here. Additional ones should go in the supplement. Even more can be in the R and Quarto files that are part of your project.*
 
 @tbl-summarytable shows a summary of the data.
 
@@ -287,12 +297,9 @@ resulttable=readRDS("../../results/summarytable.rds")
 knitr::kable(resulttable)
 ```
 
-
-
 ## Basic statistical analysis
 
-_To get some further insight into your data, if reasonable you could compute simple statistics (e.g. simple models with 1 predictor) to look for associations between your outcome(s) and each individual predictor variable. Though note that unless you pre-specified the outcome and main exposure, any "p<0.05 means statistical significance" interpretation is not valid._
-
+*To get some further insight into your data, if reasonable you could compute simple statistics (e.g. simple models with 1 predictor) to look for associations between your outcome(s) and each individual predictor variable. Though note that unless you pre-specified the outcome and main exposure, any "p\<0.05 means statistical significance" interpretation is not valid.*
 
 @fig-result shows a scatterplot figure produced by one of the R scripts.
 
@@ -303,10 +310,9 @@ _To get some further insight into your data, if reasonable you could compute sim
 knitr::include_graphics(here("results","height_weight_stratified.png"))
 ```
 
-
 ## Full analysis
 
-_Use one or several suitable statistical/machine learning methods to analyze your data and to produce meaningful figures, tables, etc. This might again be code that is best placed in one or several separate R scripts that need to be well documented. You want the code to produce figures and data ready for display as tables, and save those. Then you load them here._
+*Use one or several suitable statistical/machine learning methods to analyze your data and to produce meaningful figures, tables, etc. This might again be code that is best placed in one or several separate R scripts that need to be well documented. You want the code to produce figures and data ready for display as tables, and save those. Then you load them here.*
 
 Example @tbl-resulttable2 shows a summary of a linear model fit.
 
@@ -318,33 +324,30 @@ resulttable2 = readRDS(here("results","resulttable2.rds"))
 knitr::kable(resulttable2)
 ```
 
-
 {{< pagebreak >}}
-
 
 # Discussion
 
 ## Summary and Interpretation
-_Summarize what you did, what you found and what it means._
+
+*Summarize what you did, what you found and what it means.*
 
 ## Strengths and Limitations
-_Discuss what you perceive as strengths and limitations of your analysis._
+
+*Discuss what you perceive as strengths and limitations of your analysis.*
 
 ## Conclusions
-_What are the main take-home messages?_
 
-_Include citations in your Rmd file using bibtex, the list of references will automatically be placed at the end_
+*What are the main take-home messages?*
 
-This paper [@leek2015] discusses types of analyses. 
+*Include citations in your Rmd file using bibtex, the list of references will automatically be placed at the end*
 
-These papers [@mckay2020; @mckay2020a] are good examples of papers published using a fully reproducible setup similar to the one shown in this template. 
+This paper [@leek2015] discusses types of analyses.
+
+These papers [@mckay2020; @mckay2020a] are good examples of papers published using a fully reproducible setup similar to the one shown in this template.
 
 Note that this cited reference will show up at the end of the document, the reference formatting is determined by the CSL file specified in the YAML header. Many more style files for almost any journal [are available](https://www.zotero.org/styles). You also specify the location of your bibtex reference file in the YAML. You can call your reference file anything you like, I just used the generic word `references.bib` but giving it a more descriptive name is probably better.
-
 
 {{< pagebreak >}}
 
 # References
-
-
-
