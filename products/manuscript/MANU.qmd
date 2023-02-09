@@ -24,6 +24,8 @@ library(tidyverse)
 library(readxl)
 library(lubridate)
 library(stringr)
+here::here()
+
 ```
 
 # Summary/Abstract
@@ -67,32 +69,30 @@ Examples of reproducible research projects can for instance be found in [@mckay2
 *Write code that reads in the file and cleans it so it's ready for analysis. Since this will be fairly long code for most datasets, it might be a good idea to have it in one or several R scripts. If that is the case, explain here briefly what kind of cleaning/processing you do, and provide more details and well documented code somewhere (e.g. as supplement in a paper). All materials, including files that contain code, should be commented well so everyone can follow along.* Loading the datasets from OASIS for deaths and population (Hispanic, NH White, NH Black) for persons ages 13-59 from 2018 to 2020.
 
 ```{r warning=FALSE}
-setwd("../../")
-his_deaths <- read_xlsx("data/raw_data/hivdeaths_his_1820.xlsx", skip = 1)
-nhw_deaths <- read_xlsx("data/raw_data/hivdeaths_nhw_1820.xlsx", skip = 1)
-nhb_deaths <- read_xlsx("data/raw_data/hivdeaths_nhb_1820.xlsx", skip = 1)
+his_deaths <- read_xlsx(here("data/raw_data/hivdeaths_his_1820.xlsx"), skip = 1)
+nhw_deaths <- read_xlsx(here("data/raw_data/hivdeaths_nhw_1820.xlsx"), skip = 1)
+nhb_deaths <- read_xlsx(here("data/raw_data/hivdeaths_nhb_1820.xlsx"), skip = 1)
 
-his_pop <- read_xlsx("data/raw_data/pop_his_1820.xlsx", skip = 1)
-nhw_pop <- read_xlsx("data/raw_data/pop_nhw_1820.xlsx", skip = 1)
-nhb_pop <- read_xlsx("data/raw_data/pop_nhb_1820.xlsx", skip = 1)
+his_pop <- read_xlsx(here("data/raw_data/pop_his_1820.xlsx"), skip = 1)
+nhw_pop <- read_xlsx(here("data/raw_data/pop_nhw_1820.xlsx"), skip = 1)
+nhb_pop <- read_xlsx(here("data/raw_data/pop_nhb_1820.xlsx"), skip = 1)
 ```
 
 Loading dataset from AIDSVu for social determinants of health (2020) and new HIV diagnoses from 2018 to 2020.
 
 ```{r warning=FALSE}
-setwd("../../")
-sdoh <- read_xlsx("data/raw_data/AIDSVu_County_SDOH_2020.xlsx", skip = 3)
+sdoh <- read_xlsx(here("data/raw_data/AIDSVu_County_SDOH_2020.xlsx"), skip = 3)
 sdoh <- sdoh %>%  filter(State == "Georgia")
 
-dx18 <- read_xlsx("data/raw_data/AIDSVu_County_NewDX_2018.xlsx", skip = 3)
+dx18 <- read_xlsx(here("data/raw_data/AIDSVu_County_NewDX_2018.xlsx"), skip = 3)
 dx18 <- dx18 %>%  filter(State == "Georgia") %>% 
   select(!contains(c("Rate Stability", "Percent", "Case")))
 
-dx19 <- read_xlsx("data/raw_data/AIDSVu_County_NewDX_2019.xlsx", skip = 3)
+dx19 <- read_xlsx(here("data/raw_data/AIDSVu_County_NewDX_2019.xlsx"), skip = 3)
 dx19 <- dx19 %>%  filter(State == "Georgia")%>% 
   select(!contains(c("Rate Stability", "Percent", "Case")))
 
-dx20 <- read_xlsx("data/raw_data/AIDSVu_County_NewDX_2020.xlsx", skip = 3)
+dx20 <- read_xlsx(here("data/raw_data/AIDSVu_County_NewDX_2020.xlsx"), skip = 3)
 dx20 <- dx20 %>%  filter(State == "Georgia") %>% 
   select(!contains(c("Rate Stability", "Percent", "Case")))
 ```
@@ -101,7 +101,7 @@ Let's load data from Georgia Data on Poverty rates in Georgia by race/ ethnicity
 
 ```{r warning = false}
 setwd("../../")
-pov <- read_xlsx("data/raw_data/economics_22.xlsx", sheet = "poverty") 
+pov <- read_xlsx(here("data/raw_data/economics_22.xlsx"), sheet = "poverty") 
 
 glimpse(pov)
 ```
@@ -258,13 +258,13 @@ dx <-  dx %>% mutate(District = case_when(County %in% c("Bartow", "Catoosa", "Ch
   mutate(District = as.factor(District))
 ```
 
-Things are looking pretty good so frame, so let's save these dataframes.
+Things are looking pretty good so far, so let's save these dataframes.
 
 ```{r}
-saveRDS(df, "../../data/df.rds")
-saveRDS(dx, "../../data/dx.rds")
-saveRDS(sdoh, "../../data/sdoh.rds")
-saveRDS(pov, "../../data/pov.rds")
+saveRDS(df, here("data/processed_data/df.rds"))
+saveRDS(dx, here("data/processed_data/dx.rds"))
+saveRDS(sdoh, here("data/processed_data/sdoh.rds"))
+saveRDS(pov, here("data/processed_data/pov.rds"))
 ```
 
 Clear the environment and start fresh.
