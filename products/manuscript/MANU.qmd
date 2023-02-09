@@ -99,8 +99,7 @@ dx20 <- dx20 %>%  filter(State == "Georgia") %>%
 
 Let's load data from Georgia Data on Poverty rates in Georgia by race/ ethnicity for the period 2016-2020.
 
-```{r warning = false}
-setwd("../../")
+```{r warning = FALSE}
 pov <- read_xlsx(here("data/raw_data/economics_22.xlsx"), sheet = "poverty") 
 
 glimpse(pov)
@@ -289,13 +288,6 @@ Explore central tendency across demographic groups. Fit a poisson regression mod
 
 Note the loading of the data providing a **relative** path using the `../../` notation. (Two dots means a folder up). You never want to specify an **absolute** path like `C:\ahandel\myproject\results\` because if you share this with someone, it won't work for them since they don't have that path. You can also use the `here` R package to create paths. See examples of that below.
 
-```{r}
-#| label: tbl-summarytable
-#| tbl-cap: "Data summary table."
-#| echo: FALSE
-resulttable=readRDS("../../results/summarytable.rds")
-knitr::kable(resulttable)
-```
 
 ## Basic statistical analysis
 
@@ -304,10 +296,7 @@ knitr::kable(resulttable)
 @fig-result shows a scatterplot figure produced by one of the R scripts.
 
 ```{r}
-#| label: fig-result
-#| fig-cap: "Height and weight stratified by sex."
-#| echo: FALSE
-knitr::include_graphics(here("results","height_weight_stratified.png"))
+
 ```
 
 ## Full analysis
@@ -317,11 +306,7 @@ knitr::include_graphics(here("results","height_weight_stratified.png"))
 Example @tbl-resulttable2 shows a summary of a linear model fit.
 
 ```{r}
-#| label: tbl-resulttable2
-#| tbl-cap: "Linear model fit table."
-#| echo: FALSE
-resulttable2 = readRDS(here("results","resulttable2.rds"))
-knitr::kable(resulttable2)
+
 ```
 
 {{< pagebreak >}}
