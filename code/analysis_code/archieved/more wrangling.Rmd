@@ -1,0 +1,44 @@
+```{r}
+library(here)
+library(tidyverse)
+```
+
+```{r}
+dths <- readRDS(here("data/processed_data/df.rds"))
+dx <- readRDS(here("data/processed_data/dx.rds"))
+sdoh <- readRDS(here("data/processed_data/sdoh.rds"))
+pov <- readRDS(here("data/processed_data/pov.rds"))
+c_hlth <- readRDS(here("data/processed_data/c_hlth.rds"))
+```
+
+Let's look into the diagnoses data a bit more. 
+```{r}
+glimpse(dx)
+range(dx$`New Diagnoses Rate`)
+```
+
+Since -1 is not a possible value a rate can take, I referred back to AIDSVu.org and found that: '-1: Data are not shown to protect privacy because a small number of cases and/or a small population size for reasons listed in the Data Suppression and Rate Stability section.' A this moment, let's change observations with '-1' to NA. 
+
+```{r}
+dx <- dx %>% mutate(`New Diagnoses Rate` = if_else(`New Diagnoses Rate` < 0, NA, `New Diagnoses Rate`))
+
+pov <- pov %>% mutate(Race_Ethnicity = as.factor(Race_Ethnicity))
+
+sdoh <- sdoh %>% select(!`Median Household Income`)
+```
+
+```{r}
+df <- list(dths, dx, c_hlth, pov)
+
+df <- reduce(df, full_join)
+
+df20 <- df %>% filter(Year == 2020)
+
+df20 <- full_join(df20, sdoh)
+```
+
+Let's save these dataframes.
+```{r}
+saveRDS(df20, "data/processed_data/df20.rds")
+saveRDS(df, "data/processed_data/dataframe.rds")
+```

@@ -1,0 +1,60 @@
+```{r}
+library(here)
+library(GGally)
+library(tidyverse)
+```
+
+```{r}
+df <- readRDS(here("data/processed_data/dataframe.rds"))
+df_sdoh20 <- readRDS(here("data/processed_data/df20.rds"))
+```
+
+Creating variable for HIV death rate
+```{r}
+df <- df %>% mutate(HIV_Rate = HIV_Deaths/Population*1e5) %>% 
+  mutate(HIV_Rate = as.numeric(HIV_Rate))
+df <- df %>% mutate(logHIV_Rate = log10(HIV_Rate + 1))
+```
+
+```{r}
+df_DS <- df %>% group_by(Year, District, Race_Ethnicity, Sex, Age_Group) %>% 
+  summarise(HIV_Deaths_DS = sum(HIV_Deaths),
+            Population_DS = sum(Population),
+            Uninsured_DS = mean(`% Uninsured`),
+            Poverty_Rate_DS = mean(Poverty_Rate_1620)) %>% 
+  mutate(HIV_Rate_DS = HIV_Deaths_DS/Population_DS*1e5)
+```
+
+```{r}
+df %>% 
+  group_by(District) %>% 
+  drop_na(HIV_Rate) %>% 
+  ggplot() +
+  geom_histogram(aes(x = HIV_Rate), bins = 20)
+
+df %>% 
+  group_by(District) %>% 
+  drop_na(HIV_Rate) %>% 
+  ggplot() +
+  geom_histogram(aes(x = logHIV_Rate))
+
+df %>% 
+  group_by(District) %>% 
+  drop_na(HIV_Rate) %>%
+  filter(HIV_Rate > 0) %>% 
+  ggplot() +
+  geom_histogram(aes(x = logHIV_Rate))
+```
+
+```{r}
+x_test <- df %>%
+  drop_na(HIV_Rate) %>%
+  filter(HIV_Rate > 0)
+
+shapiro.test(x_test$HIV_Rate)
+```
+
+```{r}
+
+```
+

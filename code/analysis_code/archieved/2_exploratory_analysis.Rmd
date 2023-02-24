@@ -1,0 +1,215 @@
+```{r message=FALSE}
+library(here)
+library(GGally)
+library(skimr)
+library(tidyverse)
+```
+
+```{r}
+df <- readRDS(here("data/processed_data/dataframe.rds"))
+df_sdoh20 <- readRDS(here("data/processed_data/df20.rds"))
+```
+
+Let's collapse age groups to just look at 20-44 due to issue with very small populations among some groups. let also look at hiv deaths over entire time period.
+```{r}
+df_sub <- df %>% 
+  filter(Age_Group %in% c("20-29", "30-44"))
+
+df_sub <- df_sub %>%
+  group_by(District, Race_Ethnicity, Sex) %>% 
+  summarise(HIV_Deaths = sum(HIV_Deaths),
+            Population = sum(Population),
+            Uninsured = mean(`% Uninsured`),
+            Poverty_Rate = mean(Poverty_Rate_1620),
+            n_PCP = sum(`# Primary Care Physicians`),
+            mean_PCP_rate = mean(`PCP Rate`)) 
+```
+
+Next, let's find the expected number of HIV deaths. First, we'll calculate lambda.
+```{r}
+lambda <- sum(df_sub$HIV_Deaths)/sum(df_sub$Population)
+
+df_sub <- df_sub %>%
+  mutate(Expected_Deaths = lambda * Population)
+```
+
+Then, we'll calculate rates for observed HIV deaths and expected HIV deaths.
+```{r}
+df_sub <-  df_sub %>% 
+  mutate(HIV_Rate = ((HIV_Deaths + 0.5)/Population) *1e5)
+
+df_sub <-  df_sub %>% 
+  mutate(Expected_Rate = ((Expected_Deaths + 0.5)/Population) *1e5)
+```
+
+Next, let's find the standardized mortality ratio.
+```{r}
+df_sub <- df_sub %>%
+  mutate(SMR = HIV_Rate/Expected_Rate)
+```
+
+Next, I looked at the distribution of SMR
+```{r}
+df_sub %>% 
+  ggplot() +
+  geom_histogram(aes(x = SMR), bins = 10)
+
+summary(df_sub$SMR)
+```
+The histogram revealed a very right-skewed distribution.
+
+Let's take a look at HIV rate and SMR more closely by running some model diagnostics in ggfortify.
+```{r}
+model <- lm(df_sub$HIV_Rate ~ 1)
+model_SMR <- lm(df_sub$SMR ~ 1)
+
+library(ggfortify)
+
+autoplot(model)
+autoplot(model_SMR)
+```
+
+
+Let's see if any transformations can normalize this distribution. I decided to start with log(x +1) since the distribution was so skewed.
+```{r}
+df_sub %>% 
+  mutate(logSMR = log(SMR + 1)) %>% 
+  ggplot() +
+  geom_histogram(aes(x = logSMR), bins = 20)
+```
+But based on visual assessment, it appears that this approach was not enough to normalized the distribution! After some quick Googling, it appears some potential options are using a mixture model or Box-Cox transformation. 
+
+I'll try the Box-Cox transformation first. chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://cran.r-project.org/web/packages/spmoran/vignettes/vignette_spmoran_nongaussian.pdf
+```{r}
+library(MASS)
+b <-  boxcox(lm(df_sub$SMR ~ 1))
+
+lambda2 <- b$x[which.max(b$y)]
+
+df_sub <- df_sub %>%
+  ungroup() %>%
+  mutate(exact_x = (df_sub$SMR^lambda2 - 1) / lambda2)
+
+exact_model <- lm(df_sub$exact_x ~ 1)
+plot(exact_model)
+
+df_sub %>% 
+  ggplot() +
+  geom_histogram(aes(x = exact_x), bins = 20)
+
+shapiro.test(df_sub$exact_x)
+```
+With the p = 0.25, we do not find statistically significant evidence to reject normality. Great!
+
+Zero-inflated model. We can try this on the count data..
+```{r}
+library(pscl)
+
+m1 <- zeroinfl(HIV_Deaths ~ Uninsured | 1,  offset = Population,  data = df_sub, dist = "poisson")
+m2 <- zeroinfl(HIV_Deaths ~ . | 1,  offset = Population,  data = df_sub, dist = "negbin")
+
+summary(m1)
+summary(m2)
+```
+Admittedly, I am bit unsure of what route to take next. I am considering 
+I am considering pivoting to HIV prevalence data???
+https://bmcinfectdis.biomedcentral.com/articles/10.1186/1471-2334-14-285
+
+
+```{r}
+corr_cols <- 
+ggpairs(corr_cols)
+
+```
+
+
+
+Let's look at HIV-related death rates by race/ethnicity.
+```{r message=FALSE}
+df_sub %>% 
+  ggplot() +
+  geom_histogram(aes(x = exact_x), bins = 20) + facet_wrap (. ~ Race_Ethnicity) 
+
+df_sub %>%
+  group_by(Race_Ethnicity) %>%
+  skim(exact_x)
+```
+
+Then by sex...
+```{r}
+df_sub %>% 
+  drop_na(HIV_Rate) %>%
+  ggplot() +
+  geom_histogram(aes(x = HIV_Rate), bins = 20) + facet_wrap (. ~ Sex) 
+
+df_sub %>%
+  group_by(Sex) %>%
+  skim(HIV_Rate)
+```
+
+And by race/ ethnicity by sex.
+```{r message=FALSE, warning=FALSE}
+df_sub %>% 
+  drop_na(HIV_Rate) %>%
+  ggplot() +
+  geom_histogram(aes(x = HIV_Rate), bins = 20) + facet_wrap (Sex ~ Race_Ethnicity) 
+
+df_sub %>%
+  group_by(Race_Ethnicity, Sex) %>%
+  skim(HIV_Rate)
+```
+
+
+Next, let's get a sense of how things look by District. 
+```{r}
+df_sub %>% 
+  drop_na(HIV_Rate) %>%
+  ggplot() +
+  geom_histogram(aes(x = HIV_Rate), bins = 20) + facet_wrap (. ~ District) 
+
+df_sub %>%
+  group_by(District) %>%
+  skim(HIV_Rate)
+```
+
+```{r}
+df_sub %>% 
+  drop_na(HIV_Rate) %>%
+  ggplot() +
+geom_histogram(aes(x = HIV_Rate), bins = 20) + facet_wrap (District ~ Sex) 
+
+df_sub %>%
+  group_by(District) %>%
+  skim(HIV_Rate)
+```
+
+
+```{r}
+df_sub <- df_sub %>% mutate(logHIV_Rate = log10(HIV_Rate + 1))
+```
+
+```{r}
+df_sub %>% 
+  drop_na(HIV_Rate) %>% 
+  ggplot() +
+  geom_histogram(aes(x = HIV_Rate), bins = 20)
+
+
+df_sub %>% 
+  drop_na(HIV_Rate) %>%
+  ggplot() +
+  geom_histogram(aes(x = logHIV_Rate))
+```
+
+```{r}
+x_test <- df %>%
+  drop_na(HIV_Rate) %>%
+  filter(HIV_Rate > 0)
+
+shapiro.test(x_test$HIV_Rate)
+```
+
+```{r}
+
+```
+
