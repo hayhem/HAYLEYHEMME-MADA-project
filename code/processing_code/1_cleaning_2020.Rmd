@@ -40,13 +40,13 @@ summary(deaths_race)
 new_dx <- new_dx %>% 
   filter(!grepl("DC", `State Abbreviation`)) %>%
   filter(!grepl("PR", `State Abbreviation`)) %>% 
-  select(1:3, contains(c("male", "Black", "White", "Hispanic")), -contains(c("and", "Stability")))
+  select(1:3, contains(c("male", "Black", "White", "Hispanic", "Multiple")), -contains(c("and", "Stability")))
 
 sex_dx <- new_dx %>% 
   select(1:7)
 
 new_dx <- new_dx %>% 
-  select(1:3,8:13)
+  select(-contains(c("male", "Year")))
 ```
 
 Some rates are -9 due to missingness. Let's convert these to NA

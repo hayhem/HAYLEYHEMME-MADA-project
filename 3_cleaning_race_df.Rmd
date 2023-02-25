@@ -52,3 +52,88 @@ race_df <- race_df %>%
          ratio_OE_white = `White Death Cases` / white_exp_deaths,
          ratio_OE_multiple = `Multiple Race Death Cases` / multiple_exp_deaths)
 ```
+
+```{r}
+black_df <- race_df %>% select(1:3, contains("Black")) 
+
+black_df <- black_df %>% 
+  mutate(Race = "Black") %>% 
+ rename("Death Rate (AIDSVu)" = `Black Death Rate`,
+        "Population" = Black_pop,
+        "Death Cases" = "Black Death Cases",
+        "New Diagnoses Rate" = "New Diagnoses Black Rate",
+        "New Diagnoses Cases" = "New Diagnoses Black Cases",
+        "Percentage Diagnosed Late" = `Percent of Black Persons Diagnosed Late`,
+        "Number of Persons Diagnosed Late" = `Number of Black Persons Diagnosed Late`,
+        "Percentage Received Care" = `Percent of Black Persons Living with HIV who Received HIV Care`,
+        "Percentage Virally Suppressed" = `Percent of Black Persons Living with HIV who were Virally Suppressed`,
+        "HIV Prevalence Rate" = "Black Rate",
+        "Prevalent HIV Cases" = "Black Cases",
+        "Expected Death Cases" = black_exp_deaths,
+        "Ratio Observed/Expected" = ratio_OE_black,
+        "Death Rate (estimated)" = black_death_rate) 
+
+hispanic_df <- race_df %>% select(1:3, contains("Hispanic")) 
+
+hispanic_df <- hispanic_df %>% 
+  mutate(Race = "Hispanic") %>% 
+ rename("Death Rate (AIDSVu)" = `Hispanic Death Rate`,
+        "Population" = Hispanic_pop,
+        "Death Cases" = "Hispanic Death Cases",
+        "New Diagnoses Rate" = "New Diagnoses Hispanic Rate",
+        "New Diagnoses Cases" = "New Diagnoses Hispanic Cases",
+        "Percentage Diagnosed Late" = `Percent of Hispanic Persons Diagnosed Late`,
+        "Number of Persons Diagnosed Late" = `Number of Hispanic Persons Diagnosed Late`,
+        "Percentage Received Care" = `Percent of Hispanic Persons Living with HIV who Received HIV Care`,
+        "Percentage Virally Suppressed" = `Percent of Hispanic Persons Living with HIV who were Virally Suppressed`,
+        "HIV Prevalence Rate" = "Hispanic Rate",
+        "Prevalent HIV Cases" = "Hispanic Cases",
+        "Expected Death Cases" = hispanic_exp_deaths,
+        "Ratio Observed/Expected" = ratio_OE_hispanic,
+        "Death Rate (estimated)" = hispanic_death_rate) 
+
+white_df <- race_df %>% select(1:3, contains("White")) 
+
+white_df <- white_df %>% 
+  mutate(Race = "White") %>% 
+ rename("Death Rate (AIDSVu)" = `White Death Rate`,
+        "Population" = White_pop,
+        "Death Cases" = "White Death Cases",
+        "New Diagnoses Rate" = "New Diagnoses White Rate",
+        "New Diagnoses Cases" = "New Diagnoses White Cases",
+        "Percentage Diagnosed Late" = `Percent of White Persons Diagnosed Late`,
+        "Number of Persons Diagnosed Late" = `Number of White Persons Diagnosed Late`,
+        "Percentage Received Care" = `Percent of White Persons Living with HIV who Received HIV Care`,
+        "Percentage Virally Suppressed" = `Percent of White Persons Living with HIV who were Virally Suppressed`,
+        "HIV Prevalence Rate" = "White Rate",
+        "Prevalent HIV Cases" = "White Cases",
+        "Expected Death Cases" = white_exp_deaths,
+        "Ratio Observed/Expected" = ratio_OE_white,
+        "Death Rate (estimated)" = white_death_rate) 
+
+
+multiple_df <- race_df %>% select(1:3, contains("Multiple")) 
+
+multiple_df <- multiple_df %>% 
+  mutate(Race = "Multiple") %>% 
+ rename("Death Rate (AIDSVu)" = "Multiple Race Death Rate",
+        "Population" = Multiple_pop,
+        "Death Cases" = "Multiple Race Death Cases",
+        "New Diagnoses Rate" = "New Diagnoses Multiple Race Rate",
+        "New Diagnoses Cases" = "New Diagnoses Multiple Race Cases",
+        "Percentage Received Care" = `Percent of Multiple Race Persons Living with HIV who Received HIV Care`,
+        "Percentage Virally Suppressed" = `Percent of Multiple Race Persons Living with HIV who were Virally Suppressed`,
+        "HIV Prevalence Rate" = "Multiple Races Rate",
+        "Prevalent HIV Cases" = "Multiple Races Cases",
+        "Expected Death Cases" = multiple_exp_deaths,
+        "Ratio Observed/Expected" = ratio_OE_multiple,
+        "Death Rate (estimated)" = multiple_death_rate) 
+
+race_df <- list(black_df, hispanic_df, white_df, multiple_df)
+
+race_df <- reduce(race_df, full_join)
+```
+
+```{r}
+saveRDS(race_df, here("data/processed_data/race_df_cleaned.rds"))
+```
