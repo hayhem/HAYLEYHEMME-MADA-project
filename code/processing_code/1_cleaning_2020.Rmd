@@ -12,6 +12,7 @@ deaths <- read_xlsx(here("data/raw_data/AIDSVu_State_Death_2020.xlsx"), skip = 3
 #late_dx <- read_xlsx(here("data/raw_data/AIDSVu_State_LateDiagnoses_2020.xlsx"), skip = 3)
 us_race_pop <- read_xlsx(here("data/raw_data/DECENNIALPL2020.P2-2023-02-24T124235.xlsx"), sheet = 2)
 us_sex_pop <-read_csv(here("data/raw_data/raw_data.csv"), skip = 2)
+kid_pop <- read_xlsx(here("data/raw_data/Child population by age group.xlsx"))
 
 #new_dx <- read_xlsx(here("data/raw_data/AIDSVu_State_NewDX_2020.xlsx"), skip = 3)
 #prev  <- read_xlsx(here("data/raw_data/AIDSVu_State_Prev_2020.xlsx"), skip = 3)
@@ -22,16 +23,22 @@ us_sex_pop <-read_csv(here("data/raw_data/raw_data.csv"), skip = 2)
 
 Let's start by separating `deaths` by demographic characteristic . While this data provides information on demographic characteristics such as sex, age group, and race/ethnicity, it does not provide data on all of these terms together. We'll separating by sex and race/ethnicity. This analysis will be limited to Non-Hispanic Black, Non-Hispanic White, and Hispanic persons.
 ```{r}
-deaths_sex <- deaths %>% select(1:4, contains(c("male", "MSM")))
+deaths <- deaths %>% 
+  filter(!grepl("DC", "State Abbreviation")) %>%
+  filter(!grepl("PR", "State Abbreviation"))
 
-deaths_race <-   deaths %>% select(1:4, contains(c("Black", "White", "Hispanic",  "Multiple")))
+deaths_sex <- deaths %>%
+  select(1:4, contains("male")) 
+
+deaths_race <-   deaths %>%
+  select(1:4, contains(c("Black", "White", "Hispanic",  "Multiple")))
 
 summary(deaths_race)
 ```
 
 Some rates are -9 due to missingness. Let's convert these to NA
 ```{r}
-death_race <- deaths_race %>% 
+deaths_race <- deaths_race %>% 
   mutate(across(ends_with("Death Rate"), ~ case_when( .x < 0 ~ NA, TRUE ~ .x)))
 ```
 
@@ -41,7 +48,7 @@ glimpse(us_race_pop)
 
 race_pop <- us_race_pop %>%  
   pivot_longer(2:54 , names_to = "Location", values_to = "Population" ) %>%  
-  pivot_wider(names_from = Label, values_from= Population)
+  pivot_wider(names_from = Label, values_from = Population)
 ```
 
 ```{r}
@@ -58,19 +65,19 @@ I need to remove all commas from the dataframe and convert the columns to numeri
 race_pop <- race_pop %>% 
   mutate_all(~ str_remove_all(., ",")) %>% 
   mutate(across(2:6, ~ as.numeric(.)))
-
 ```
 
 Then, I'll calculate the counts of males and females in each location.
 ```{r}
-total_pop <- race_pop %>% select(1:2)
+total_pop <- race_pop %>%
+  select(1:2)
+
 pop_sex <- inner_join(total_pop, us_sex_pop)
 ```
 
 Next, we need to estimate the population older than 12. I will try to estimate this using data from Kids Count. 
 
 ```{r}
-kid_pop <- read_xlsx(here("data/raw_data/Child population by age group.xlsx"))
 kid_pop <- kid_pop %>% 
   filter(TimeFrame == 2020) %>% 
   filter(`Age group` %in% c("0 to 4", "5 to 11", "12 to 14")) %>% 
@@ -83,28 +90,59 @@ pop_less13 <- kid_pop %>%
   mutate(`Data` = ifelse(`Age group` == '12', `Data` * 0.333, `Data`)) %>%
   group_by(Location) %>% 
   summarise(Less13 = sum(Data))
+```
 
+```{r}
 new_pop <- full_join(pop_sex, pop_less13, by = join_by(Location))
 
 new_pop <- new_pop %>% 
   mutate(Male_Pop = Male * `Total:`,
   Female_Pop = Female * `Total:`,
   Female_kid_pop = Female * Less13,
-  Male_kid_pop = Male * Less13)
+  Male_kid_pop = Male * Less13) 
+  
+new_pop <- new_pop %>%
+  filter(!grepl("District", Location)) %>%
+  filter(!grepl("United", Location)) %>% 
+  filter(!grepl("Puerto Rico", Location))
 
 df_pop <- new_pop %>% 
   group_by(Location) %>% 
   summarize(df_pop_male = sum(Male_Pop - Male_kid_pop),
             df_pop_female = sum(Female_Pop - Female_kid_pop))
-
 ```
 
 ```{r}
-sex_df <- inner_join(deaths_sex, df_pop, by = join_by(State == Location))
+sex_df <- full_join(deaths_sex, df_pop, by = join_by(State == Location))
+```
+
+Let's find the HIV death rate by sex
+```{r}
+sex_df <- sex_df %>% 
+  mutate(M_Rate = `Male Death Cases`/df_pop_male*1e5,
+         F_Rate = `Female Death Cases`/df_pop_female*1e5)
+```
+
+Next, let's find the expected number of HIV deaths. First, we'll calculate lambda.
+```{r}
+lambda_male <- sex_df %>% drop_na(`Male Death Cases`) %>% 
+  drop_na(df_pop_male) %>% 
+  summarize(lambda_male = sum(`Male Death Cases`)/sum(df_pop_male)) %>%
+  as.numeric()
+
+lambda_female <- sex_df %>% drop_na(`Female Death Cases`) %>% 
+  drop_na(df_pop_female) %>% 
+  summarize(lambda_female = sum(`Female Death Cases`)/sum(df_pop_female)) %>%
+  as.numeric()
+
+sex_df <- sex_df %>%
+  mutate(Expected_Male_Cases = df_pop_male * lambda_male,
+         Expected_Female_Cases = df_pop_female *  lambda_female)
 ```
 
 ```{r}
-sex_df %>% mutate(M_Rate = `Male Death Cases`/df_pop_male*1e5)
+sex_df <- sex_df %>% 
+  mutate(OE_Ratio_male = `Male Death Cases` / Expected_Male_Cases,
+         OE_Ratio_female = `Female Death Cases` / Expected_Female_Cases)
 ```
 
-Next find expected rate vs observed rate
