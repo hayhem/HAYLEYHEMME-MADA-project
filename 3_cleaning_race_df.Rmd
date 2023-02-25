@@ -1,0 +1,54 @@
+```{r, echo=FALSE, message=FALSE}
+library(knitr)
+library(tidyverse)
+library(here)
+```
+
+```{r}
+race_df <- readRDS(here("data/processed_data/race_df.rds"))
+```
+Let's find the HIV death rate by race
+```{r}
+race_df <- race_df %>% 
+  mutate(black_death_rate = round(`Black Death Cases`/Black_pop*1e5),
+         hispanic_death_rate = round(`Hispanic Death Cases`/Hispanic_pop*1e5),
+         white_death_rate = round(`White Death Cases`/White_pop*1e5),
+         multiple_death_rate = round(`Multiple Race Death Cases`/Multiple_pop*1e5))
+```
+
+Next, let's find the expected number of HIV deaths. First, we'll calculate lambda.
+```{r}
+lambda_black <- race_df %>%
+  drop_na(`Black Death Cases`) %>% 
+  summarize(lambda_black = sum(`Black Death Cases`)/sum(Black_pop)) %>%
+  as.numeric()
+
+lambda_hispanic <- race_df %>%
+  drop_na(`Hispanic Death Cases`) %>% 
+  summarize(lambda_hispanic = sum(`Hispanic Death Cases`)/sum(Hispanic_pop)) %>%
+  as.numeric()
+
+lambda_white <- race_df %>%
+  drop_na(`White Death Cases`) %>% 
+  summarize(lambda_white = sum(`White Death Cases`)/sum(White_pop)) %>%
+  as.numeric()
+
+lambda_multiple <- race_df %>%
+  drop_na(`Multiple Race Death Cases`) %>% 
+  summarize(lambda_multipe = sum(`Multiple Race Death Cases`)/sum(Multiple_pop)) %>%
+  as.numeric()
+
+race_df <- race_df %>%
+  mutate(black_exp_deaths = round(Black_pop * lambda_black),
+        white_exp_deaths = round(White_pop * lambda_white),
+        hispanic_exp_deaths = round(Hispanic_pop *  lambda_hispanic),
+        multiple_exp_deaths = round(Multiple_pop *  lambda_multiple))
+```
+
+```{r}
+race_df <- race_df %>% 
+  mutate(ratio_OE_black = `Black Death Cases` / black_exp_deaths,
+         ratio_OE_hispanic = `Hispanic Death Cases` / hispanic_exp_deaths,
+         ratio_OE_white = `White Death Cases` / white_exp_deaths,
+         ratio_OE_multiple = `Multiple Race Death Cases` / multiple_exp_deaths)
+```

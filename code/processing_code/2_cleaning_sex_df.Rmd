@@ -1,0 +1,38 @@
+```{r, echo=FALSE, message=FALSE}
+library(knitr)
+library(tidyverse)
+library(here)
+```
+
+```{r}
+sex_df <- readRDS(here("data/processed_data/sex_df.rds"))
+```
+Let's find the HIV death rate by sex
+```{r}
+sex_df <- sex_df %>% 
+  mutate(M_Rate = round(`Male Death Cases`/pop_male*1e5),
+         F_Rate = round(`Female Death Cases`/pop_female*1e5))
+```
+
+Next, let's find the expected number of HIV deaths. First, we'll calculate lambda.
+```{r}
+lambda_male <- sex_df %>% drop_na(`Male Death Cases`) %>% 
+  drop_na(pop_male) %>% 
+  summarize(lambda_male = sum(`Male Death Cases`)/sum(pop_male)) %>%
+  as.numeric()
+
+lambda_female <- sex_df %>% drop_na(`Female Death Cases`) %>% 
+  drop_na(pop_female) %>% 
+  summarize(lambda_female = sum(`Female Death Cases`)/sum(pop_female)) %>%
+  as.numeric()
+
+sex_df <- sex_df %>%
+  mutate(male_exp_deaths = round(pop_male * lambda_male),
+         female_exp_deaths = round(pop_female *  lambda_female))
+```
+
+```{r}
+sex_df <- sex_df %>% 
+  mutate(ratio_OE_male = `Male Death Cases` / male_exp_deaths,
+         ratio_OE_female = `Female Death Cases` / female_exp_deaths)
+```

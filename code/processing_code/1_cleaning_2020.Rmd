@@ -9,31 +9,44 @@ library(here)
 
 ```{r}
 deaths <- read_xlsx(here("data/raw_data/AIDSVu_State_Death_2020.xlsx"), skip = 3)
-#late_dx <- read_xlsx(here("data/raw_data/AIDSVu_State_LateDiagnoses_2020.xlsx"), skip = 3)
 us_race_pop <- read_xlsx(here("data/raw_data/DECENNIALPL2020.P2-2023-02-24T124235.xlsx"), sheet = 2)
 us_sex_pop <-read_csv(here("data/raw_data/raw_data.csv"), skip = 2)
 kid_pop <- read_xlsx(here("data/raw_data/Child population by age group.xlsx"))
+kid_race <- read_xlsx(here("data/raw_data/Child population by race and ethnicity.xlsx"))
 
-#new_dx <- read_xlsx(here("data/raw_data/AIDSVu_State_NewDX_2020.xlsx"), skip = 3)
-#prev  <- read_xlsx(here("data/raw_data/AIDSVu_State_Prev_2020.xlsx"), skip = 3)
-#rec_care  <- read_xlsx(here("data/raw_data/AIDSVu_State_ReceiptofCare_2020.xlsx"), skip = 3)
-#sdoh  <- read_xlsx(here("data/raw_data/AIDSVu_State_SDOH_2020.xlsx"), skip = 3)
-#v_sup  <- read_xlsx(here("data/raw_data/AIDSVu_State_ViralSuppression_2020.xlsx"), skip = 3)
+new_dx <- read_xlsx(here("data/raw_data/AIDSVu_State_NewDX_2020.xlsx"), skip = 3)
+late_dx <- read_xlsx(here("data/raw_data/AIDSVu_State_LateDiagnoses_2020.xlsx"), skip = 3)
+prev  <- read_xlsx(here("data/raw_data/AIDSVu_State_Prev_2020.xlsx"), skip = 3)
+rec_care  <- read_xlsx(here("data/raw_data/AIDSVu_State_ReceiptofCare_2020.xlsx"), skip = 3)
+sdoh  <- read_xlsx(here("data/raw_data/AIDSVu_State_SDOH_2020.xlsx"), skip = 3)
+v_sup  <- read_xlsx(here("data/raw_data/AIDSVu_State_ViralSuppression_2020.xlsx"), skip = 3)
 ```
 
 Let's start by separating `deaths` by demographic characteristic . While this data provides information on demographic characteristics such as sex, age group, and race/ethnicity, it does not provide data on all of these terms together. We'll separating by sex and race/ethnicity. This analysis will be limited to Non-Hispanic Black, Non-Hispanic White, and Hispanic persons.
 ```{r}
 deaths <- deaths %>% 
-  filter(!grepl("DC", "State Abbreviation")) %>%
-  filter(!grepl("PR", "State Abbreviation"))
+  filter(!grepl("DC", `State Abbreviation`)) %>%
+  filter(!grepl("PR", `State Abbreviation`))
 
 deaths_sex <- deaths %>%
-  select(1:4, contains("male")) 
+  select(1:4, contains("male"), -contains("and"), -ends_with("Stability")) 
 
 deaths_race <-   deaths %>%
-  select(1:4, contains(c("Black", "White", "Hispanic",  "Multiple")))
+  select(1:4, contains(c("Black", "White", "Hispanic",  "Multiple")), -ends_with("Stability"))
 
 summary(deaths_race)
+```
+```{r}
+new_dx <- new_dx %>% 
+  filter(!grepl("DC", `State Abbreviation`)) %>%
+  filter(!grepl("PR", `State Abbreviation`)) %>% 
+  select(1:3, contains(c("male", "Black", "White", "Hispanic")), -contains(c("and", "Stability")))
+
+sex_dx <- new_dx %>% 
+  select(1:7)
+
+new_dx <- new_dx %>% 
+  select(1:3,8:13)
 ```
 
 Some rates are -9 due to missingness. Let's convert these to NA
@@ -48,7 +61,11 @@ glimpse(us_race_pop)
 
 race_pop <- us_race_pop %>%  
   pivot_longer(2:54 , names_to = "Location", values_to = "Population" ) %>%  
-  pivot_wider(names_from = Label, values_from = Population)
+  pivot_wider(names_from = Label, values_from = Population) 
+
+race_pop <- race_pop %>%
+  filter(!grepl("Puerto Rico", Location)) %>% 
+  filter(!grepl("District", Location)) 
 ```
 
 ```{r}
@@ -65,18 +82,16 @@ I need to remove all commas from the dataframe and convert the columns to numeri
 race_pop <- race_pop %>% 
   mutate_all(~ str_remove_all(., ",")) %>% 
   mutate(across(2:6, ~ as.numeric(.)))
+
+total_pop <- race_pop %>%  select(1:2)
 ```
 
 Then, I'll calculate the counts of males and females in each location.
 ```{r}
-total_pop <- race_pop %>%
-  select(1:2)
-
 pop_sex <- inner_join(total_pop, us_sex_pop)
 ```
 
-Next, we need to estimate the population older than 12. I will try to estimate this using data from Kids Count. 
-
+Next, we need to estimate the population older than 12. Since I cannot find a source explicitly population older than 12, I will estimate population younger than 13 this using data from Kids Count. 
 ```{r}
 kid_pop <- kid_pop %>% 
   filter(TimeFrame == 2020) %>% 
@@ -96,10 +111,10 @@ pop_less13 <- kid_pop %>%
 new_pop <- full_join(pop_sex, pop_less13, by = join_by(Location))
 
 new_pop <- new_pop %>% 
-  mutate(Male_Pop = Male * `Total:`,
-  Female_Pop = Female * `Total:`,
-  Female_kid_pop = Female * Less13,
-  Male_kid_pop = Male * Less13) 
+  mutate(Male_Pop = round(Male * `Total:`),
+  Female_Pop = round(Female * `Total:`),
+  Female_kid_pop = round(Female * Less13),
+  Male_kid_pop = round(Male * Less13)) 
   
 new_pop <- new_pop %>%
   filter(!grepl("District", Location)) %>%
@@ -108,41 +123,109 @@ new_pop <- new_pop %>%
 
 df_pop <- new_pop %>% 
   group_by(Location) %>% 
-  summarize(df_pop_male = sum(Male_Pop - Male_kid_pop),
-            df_pop_female = sum(Female_Pop - Female_kid_pop))
+  summarize(pop_male = sum(Male_Pop - Male_kid_pop),
+            pop_female = sum(Female_Pop - Female_kid_pop))
 ```
 
 ```{r}
 sex_df <- full_join(deaths_sex, df_pop, by = join_by(State == Location))
-```
 
-Let's find the HIV death rate by sex
-```{r}
-sex_df <- sex_df %>% 
-  mutate(M_Rate = `Male Death Cases`/df_pop_male*1e5,
-         F_Rate = `Female Death Cases`/df_pop_female*1e5)
-```
-
-Next, let's find the expected number of HIV deaths. First, we'll calculate lambda.
-```{r}
-lambda_male <- sex_df %>% drop_na(`Male Death Cases`) %>% 
-  drop_na(df_pop_male) %>% 
-  summarize(lambda_male = sum(`Male Death Cases`)/sum(df_pop_male)) %>%
-  as.numeric()
-
-lambda_female <- sex_df %>% drop_na(`Female Death Cases`) %>% 
-  drop_na(df_pop_female) %>% 
-  summarize(lambda_female = sum(`Female Death Cases`)/sum(df_pop_female)) %>%
-  as.numeric()
-
-sex_df <- sex_df %>%
-  mutate(Expected_Male_Cases = df_pop_male * lambda_male,
-         Expected_Female_Cases = df_pop_female *  lambda_female)
+sex_df <- full_join(sex_df, sex_dx)
 ```
 
 ```{r}
-sex_df <- sex_df %>% 
-  mutate(OE_Ratio_male = `Male Death Cases` / Expected_Male_Cases,
-         OE_Ratio_female = `Female Death Cases` / Expected_Female_Cases)
+glimpse(kid_race)
+
+kid_race <- kid_race %>% 
+  filter(TimeFrame == 2020,
+         DataFormat == "Percent") %>% 
+  mutate(Data = as.numeric(Data)) %>% 
+  filter(Race %in% c("Hispanic or Latino", "Non-Hispanic Black alone", "Non-Hispanic White alone", "Non-Hispanic Two or More Race Groups")) 
+
+kid_race <- kid_race %>%
+  pivot_wider(Location, names_from = Race, values_from = Data) %>% 
+  rename(c(Hispanic_k = `Hispanic or Latino`,
+         White_k = `Non-Hispanic White alone`,
+         Black_k = `Non-Hispanic Black alone`,
+         Multiple_k = `Non-Hispanic Two or More Race Groups`))
+
+kid_race <- inner_join(kid_race, pop_less13)
 ```
 
+Let's estimate the number of children under 13 by race
+```{r}
+kid_race <- kid_race %>%
+  mutate(across(2:5, ~ round( . * Less13)))
+
+race_pop <- inner_join(race_pop, kid_race)
+
+race_pop <- race_pop %>% 
+  group_by(Location) %>% 
+  summarize(Black_pop = sum(Black - Black_k),
+            Hispanic_pop = sum(Hispanic - Hispanic_k),
+            White_pop = sum(White - White_k),
+            Multiple_pop = sum(Multiple - Multiple_k))
+```
+
+```{r}
+race_df <- list(deaths_race, late_dx, new_dx)
+
+race_df <- reduce(race_df, inner_join)
+
+race_df <- inner_join(race_df, race_pop, by = join_by(State == Location))
+```
+
+```{r}
+rec_care <- rec_care %>%
+  filter(!grepl("DC", `State Abbreviation`)) %>%
+  filter(!grepl("PR", `State Abbreviation`)) %>% 
+  select(1:3, contains("Percent of")) %>% 
+  select(1:3, contains(c("Hispanic", "Black", "White", "Multiple","male")))
+
+sex_df$`Male_rec_care_percent`<- rec_care$`Percent of Males Living with HIV who Received HIV Care`
+sex_df$`Female_rec_care_percent`<- rec_care$`Percent of Females Living with HIV who Received HIV Care`
+
+rec_care <- rec_care %>%
+  select(1:3, contains(c("Hispanic", "Black", "White", "Multiple")))
+
+race_df <- inner_join(race_df, rec_care)
+```
+```{r}
+v_sup <- v_sup %>%
+  filter(!grepl("DC", `State Abbreviation`)) %>%
+  filter(!grepl("PR", `State Abbreviation`)) %>% 
+  select(1:3, contains("Percent of")) %>% 
+  select(1:3, contains(c("Hispanic", "Black", "White", "Multiple","male")))
+
+sex_df$`Male_viral_sup_percent` <- v_sup$`Percent of Males Living with HIV who were Virally Suppressed`
+sex_df$`Female_viral_sup_percent` <- v_sup$`Percent of Females Living with HIV who were Virally Suppressed`
+
+v_sup <- v_sup %>%
+  select(1:3, contains(c("Hispanic", "Black", "White", "Multiple")))
+race_df <- inner_join(race_df, v_sup)
+```
+
+```{r}
+prev <- prev %>% 
+  filter(!grepl("DC", `State Abbreviation`)) %>%
+  filter(!grepl("PR", `State Abbreviation`))
+
+prev_sex <- prev %>%
+  select(1:4, contains("male"), -contains("and"), -ends_with("Stability")) 
+
+sex_df <- full_join(sex_df, prev_sex)
+
+prev_race <-   prev %>%
+  select(1:4, contains(c("Black", "White", "Hispanic",  "Multiple")), -contains("and"), -ends_with("Stability")) 
+
+race_df <- full_join(race_df, prev_race)
+```
+
+```{r}
+saveRDS(sex_df, here("data/processed_data/sex_df.rds"))
+saveRDS(race_df, here("data/processed_data/race_df.rds"))
+```
+
+```{r}
+rm(deaths, df_pop, kid_pop, pop_sex, pop_less13, us_sex_pop, us_race_pop, new_pop, deaths_sex, race_pop, kid_race, total_pop, deaths_race, late_dx, new_dx, sex_dx, prev, prev_sex, prev_race, v_sup, rec_care)
+```
