@@ -220,6 +220,16 @@ prev_race <-   prev %>%
 
 race_df <- full_join(race_df, prev_race)
 ```
+```{r}
+sdoh <- sdoh %>% 
+  filter(!grepl("DC", `State Abbreviation`)) %>% 
+   filter(!grepl("PR", `State Abbreviation`))
+
+sex_df <- full_join(sex_df, sdoh)
+
+race_df <- full_join(race_df,sdoh)
+```
+
 
 ```{r}
 saveRDS(sex_df, here("data/processed_data/sex_df.rds"))

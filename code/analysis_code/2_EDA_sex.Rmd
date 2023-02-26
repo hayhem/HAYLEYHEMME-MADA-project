@@ -1,0 +1,61 @@
+```{r}
+library(here)
+library(tidyverse)
+library(spdep)
+```
+https://github.com/ubikuity/List-of-neighboring-states-for-each-US-state
+List-of-neighboring-states-for-each-US-state
+```{r}
+sex_df <- readRDS(here("data/processed_data/sex_new.rds"))
+us_nabs <- read_csv(here("data/raw_data/neighbors-states.csv"))
+
+us_nabs <- us_nabs %>%
+  filter(!grepl("AK", StateCode),
+         !grepl("HI", StateCode), 
+         !grepl("DC", StateCode))
+```
+
+```{r}
+male_df <- sex_df %>%
+  filter(!grepl("Alaska", State),
+         !grepl("Hawaii", State),
+         Sex == "Male")
+
+
+h_male <- matrix(0, nrow(male_df), nrow(male_df))
+h_male[cbind(match(us_nabs$StateCode, male_df$`State Abbreviation`), match(us_nabs$NeighborStateCode, male_df$`State Abbreviation`))]<-1
+nablist_male <- mat2listw(h_male)
+```
+
+
+```{r}
+par(mfrow=c(1,2))
+moran.test(male_df$BOX, nablist_male, zero.policy = TRUE, randomisation = FALSE)
+moran.plot(male_df$BOX, nablist_male, zero.policy = TRUE)
+
+lisa_male <-localmoran(male_df$`Ratio Observed/Expected`,  nablist_male)
+summary(lisa_male[,1])
+```
+
+Since the data frame for female is missing observations (due to 0) for Vermont and New Hampshire, we need to remove these from the neighbor list.
+```{r}
+female_df <- sex_df %>%
+  filter(!grepl("Alaska", State),
+         !grepl("Hawaii", State),
+         Sex == "Female")
+us_nabs_f <- us_nabs %>%
+  filter(!grepl("VT", StateCode),
+         !grepl("NH", StateCode))
+
+h_female <- matrix(0, nrow(female_df), nrow(female_df))
+h_female[cbind(match(us_nabs_f$StateCode, female_df$`State Abbreviation`), match(us_nabs_f$NeighborStateCode, female_df$`State Abbreviation`))]<-1
+nablist_female <- mat2listw(h_female)
+
+par(mfrow=c(1,2))
+moran.test(female_df$BOX, nablist_female, zero.policy = TRUE, randomisation = FALSE)
+moran.plot(female_df$BOX, nablist_female, zero.policy = TRUE)
+
+lisa_female <-localmoran(female_df$`Ratio Observed/Expected`,  nablist_female)
+summary(lisa_female[,1])
+```
+

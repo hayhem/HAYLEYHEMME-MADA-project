@@ -54,7 +54,7 @@ race_df <- race_df %>%
 ```
 
 ```{r}
-black_df <- race_df %>% select(1:3, contains("Black")) 
+black_df <- race_df %>% select(1:3, contains("Black"), 50:62) 
 
 black_df <- black_df %>% 
   mutate(Race = "Black") %>% 
@@ -73,7 +73,7 @@ black_df <- black_df %>%
         "Ratio Observed/Expected" = ratio_OE_black,
         "Death Rate (estimated)" = black_death_rate) 
 
-hispanic_df <- race_df %>% select(1:3, contains("Hispanic")) 
+hispanic_df <- race_df %>% select(1:3, contains("Hispanic"), 50:62) 
 
 hispanic_df <- hispanic_df %>% 
   mutate(Race = "Hispanic") %>% 
@@ -92,7 +92,7 @@ hispanic_df <- hispanic_df %>%
         "Ratio Observed/Expected" = ratio_OE_hispanic,
         "Death Rate (estimated)" = hispanic_death_rate) 
 
-white_df <- race_df %>% select(1:3, contains("White")) 
+white_df <- race_df %>% select(1:3, contains("White"), 50:62) 
 
 white_df <- white_df %>% 
   mutate(Race = "White") %>% 
@@ -112,7 +112,7 @@ white_df <- white_df %>%
         "Death Rate (estimated)" = white_death_rate) 
 
 
-multiple_df <- race_df %>% select(1:3, contains("Multiple")) 
+multiple_df <- race_df %>% select(1:3, contains("Multiple"), 50:62) 
 
 multiple_df <- multiple_df %>% 
   mutate(Race = "Multiple") %>% 
