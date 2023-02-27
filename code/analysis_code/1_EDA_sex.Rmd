@@ -3,8 +3,6 @@ library(here)
 library(GGally)
 library(skimr)
 library(ggfortify)
-library(car)
-library(bestNormalize)
 library(MASS)
 library(tidyverse)
 library(readxl)
@@ -138,7 +136,7 @@ sex_df_DR %>%
 par(mfrow=c(1,3))
 plot(lm(sex_df_DR$BOX ~ 1))
 ```
-Unsuccessful.
+Unsuccessful at normalizing distribution of Death Rate, and overall worse results than log transformation, except for the males.
 
 Box Cox transformation of ROE and results of shapiro test.
 ```{r}
@@ -190,12 +188,41 @@ sex_df_SMR %>%
 par(mfrow=c(1,3))
 plot(lm(sex_df_SMR$BOX ~ 1))
 ```
-The Box Cox transformation was not able to normalize the `Standardized Mortality Ratio`. We will move on the Yeo Johnson transformation
+The Box Cox transformation was not technically able to normalize the `Standardized Mortality Ratio`. We will move on the Yeo Johnson transformation
 
 
-We will perform Yeo Johnson transformation on `Death Rate (estimated)` and `Standardized Mortality Ratio`.We will use `yeojohnson` from `BestNormalize` package to extract lambda and `yeo_johnson` from `car` to compute the transformation for each observation.
+We will perform Yeo Johnson transformation on `Death Rate (estimated)` and `Standardized Mortality Ratio`.We will use `yeojohnson` from `BestNormalize` package to extract lambda and `yeo_johnson` to compute the transformation for each observation. Code for `yeo_johnson` obtained from [GitHub](https://stats.stackexchange.com/questions/1444/how-should-i-transform-non-negative-data-including-zeros)
 ```{r}
-yj_DR <- yeojohnson(sex_df_SMR$`Death Rate (estimated)`)
+library(bestNormalize)
+
+yeo_johnson <- function(x, lambda) {
+
+    eps <- .000001
+    not_neg <- which(x >= 0)
+    is_neg  <- which(x < 0)
+
+    not_neg_trans <- function(x, lambda) {
+        if (abs(lambda) < eps) log(x + 1)
+        else ((x + 1) ^ lambda - 1) / lambda
+    }
+
+    neg_trans <- function(x, lambda) {
+        if (abs(lambda - 2) < eps) - log(-x + 1)
+        else - ((-x + 1) ^ (2 - lambda) - 1) / (2 - lambda)
+    }
+
+    x[not_neg] <- not_neg_trans(x[not_neg], lambda)
+
+    x[is_neg] <- neg_trans(x[is_neg], lambda)
+
+    return(x)
+
+}
+
+```
+
+```{r}
+yj_DR <- yeojohnson(sex_df_DR$`Death Rate (estimated)`)
 yj_DR <- yj_DR$lambda
 
 sex_df <- sex_df %>%
@@ -221,7 +248,7 @@ sex_df %>%
 par(mfrow=c(1,3))
 plot(lm(sex_df$YJ ~ 1))
 ```
-Unable to normalized the distribution `Death Rate (estimated)` with the Yeo Johnson transformation. 
+Unable to normalized the distribution `Death Rate (estimated)` with the Yeo Johnson transformation, but improved for overall and males compared to log transformation (not for females).
 
 ```{r}
 yj_SMR <- yeojohnson(sex_df_SMR$`Standardized Mortality Ratio`)
@@ -257,7 +284,7 @@ Plotting correlation matrix
 X <- sex_df[,c(9:10, 16:25)]
 ggpairs(X)
 ```
-
+Let's save the dataframe for ROE since this one was able to be normalized after Box Cox transformation.
 ```{r}
 saveRDS(sex_df_ROE, here("data/processed_data/sex_new.rds"))
 ```

@@ -1,0 +1,3 @@
+This folder contains processing code for cleaning the raw dataframes used in this analysis. 
+
+To reproduce this analysis,it is necessary to run the code for `1_cleaning_2020.rds` first. The other files are numbered in the order they were created, but as long as all files are run before moving onto analysis, the order of which to run them does not matter.
