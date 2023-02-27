@@ -7,7 +7,7 @@ https://github.com/ubikuity/List-of-neighboring-states-for-each-US-state
 List-of-neighboring-states-for-each-US-state
 ```{r}
 sex_df <- readRDS(here("data/processed_data/sex_new.rds"))
-us_nabs <- read_csv(here("data/raw_data/neighbors-states.csv"))
+us_nabs <- readRDS(here("data/processed_data/us_nabs.rds"))
 
 us_nabs <- us_nabs %>%
   filter(!grepl("AK", StateCode),

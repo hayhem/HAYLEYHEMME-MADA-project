@@ -1,0 +1,20 @@
+
+This is the list of neighboring states that was obtained from a user on [GitHub](https://github.com/ubikuity/List-of-neighboring-states-for-each-US-state). After some 'investigation' (troubleshooting code), this file is not exactly what I need to create the neighbor list. What is achieved by the following code took me a few seconds to do in Excel with copy and paste. But for the sake of reproducibility, I decided it's well-worth it some spend a little bit of time do this in R. 
+
+```{r}
+library(reshape2)
+library(tidyverse)
+library(here)
+
+us_nabs <- read_csv(here("data/raw_data/neighbors-states.csv"))
+
+us_nabs_copy <- us_nabs
+```
+
+```{r}
+nabs <- full_join(us_nabs, us_nabs_copy, by = join_by(StateCode == NeighborStateCode, NeighborStateCode == StateCode))
+```
+
+```{r}
+saveRDS(nabs, here("data/processed_data/us_nabs.rds"))
+```
