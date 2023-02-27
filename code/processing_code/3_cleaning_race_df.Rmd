@@ -134,6 +134,7 @@ race_df <- list(black_df, hispanic_df, white_df, multiple_df)
 race_df <- reduce(race_df, full_join)
 ```
 
+Save the file and now we can move on to some exploratory analysis!
 ```{r}
 saveRDS(race_df, here("data/processed_data/race_df_cleaned.rds"))
 ```

@@ -1,3 +1,6 @@
+Cleaning Part 1
+
+Load necessary libraries
 ```{r, echo=FALSE, message=FALSE}
 library(knitr)
 library(readxl)
@@ -7,6 +10,7 @@ library(tidyverse)
 library(here)
 ```
 
+Load the files to be cleaned.
 ```{r}
 deaths <- read_xlsx(here("data/raw_data/AIDSVu_State_Death_2020.xlsx"), skip = 3)
 us_race_pop <- read_xlsx(here("data/raw_data/DECENNIALPL2020.P2-2023-02-24T124235.xlsx"), sheet = 2)
@@ -22,7 +26,7 @@ sdoh  <- read_xlsx(here("data/raw_data/AIDSVu_State_SDOH_2020.xlsx"), skip = 3)
 v_sup  <- read_xlsx(here("data/raw_data/AIDSVu_State_ViralSuppression_2020.xlsx"), skip = 3)
 ```
 
-Let's start by separating `deaths` by demographic characteristic . While this data provides information on demographic characteristics such as sex, age group, and race/ethnicity, it does not provide data on all of these terms together. We'll separating by sex and race/ethnicity. This analysis will be limited to Non-Hispanic Black, Non-Hispanic White, and Hispanic persons.
+Let's start by separating `deaths` by demographic characteristic . While this data provides information on demographic characteristics such as sex, age group, and race/ethnicity, it does not provide data on all of these terms together. We'll separating by sex and race/ethnicity. This analysis will be limited to Non-Hispanic Black, Non-Hispanic White, Hispanic persons, and persons of Multiple racial backgrounds.
 ```{r}
 deaths <- deaths %>% 
   filter(!grepl("DC", `State Abbreviation`)) %>%
@@ -36,6 +40,14 @@ deaths_race <-   deaths %>%
 
 summary(deaths_race)
 ```
+Some rates are -9 due to missingness. Let's convert these to NA
+```{r}
+deaths_race <- deaths_race %>% 
+  mutate(across(ends_with("Death Rate"), ~ case_when( .x < 0 ~ NA, TRUE ~ .x)))
+```
+
+
+Next, let's clean the dataframe for New diagnoses. We'll select for variables of interest and subset.
 ```{r}
 new_dx <- new_dx %>% 
   filter(!grepl("DC", `State Abbreviation`)) %>%
@@ -49,13 +61,7 @@ new_dx <- new_dx %>%
   select(-contains(c("male", "Year")))
 ```
 
-Some rates are -9 due to missingness. Let's convert these to NA
-```{r}
-deaths_race <- deaths_race %>% 
-  mutate(across(ends_with("Death Rate"), ~ case_when( .x < 0 ~ NA, TRUE ~ .x)))
-```
-
-Next, let's move on to the census data. I'll start by re-formatting the data from wide format for States to long, and format race/ethnicity into wide.
+Moving on to the census data. I'll start by re-formatting the data from wide format for States to long, and format race/ethnicity into wide.
 ```{r}
 glimpse(us_race_pop)
 
@@ -68,6 +74,7 @@ race_pop <- race_pop %>%
   filter(!grepl("District", Location)) 
 ```
 
+I'll select only the columns of interest, and rename some of them so they are a bit easier to work with.
 ```{r}
 race_pop <- race_pop %>% 
   select(c(Location, starts_with(c("Total:", "Black or African American alone", "Hispanic", "White alone", "Population of two or more races:")))) %>% 
@@ -83,15 +90,11 @@ race_pop <- race_pop %>%
   mutate_all(~ str_remove_all(., ",")) %>% 
   mutate(across(2:6, ~ as.numeric(.)))
 
-total_pop <- race_pop %>%  select(1:2)
+total_pop <- race_pop %>%
+  select(1:2)
 ```
 
-Then, I'll calculate the counts of males and females in each location.
-```{r}
-pop_sex <- inner_join(total_pop, us_sex_pop)
-```
-
-Next, we need to estimate the population older than 12. Since I cannot find a source explicitly population older than 12, I will estimate population younger than 13 this using data from Kids Count. 
+I also need to estimate the population older than 12. Since I cannot find a source explicitly population older than 12, I will estimate population younger than 13 this using data from Kids Count. 
 ```{r}
 kid_pop <- kid_pop %>% 
   filter(TimeFrame == 2020) %>% 
@@ -107,8 +110,11 @@ pop_less13 <- kid_pop %>%
   summarise(Less13 = sum(Data))
 ```
 
+Then, I'll calculate the counts of males and females in each location using percentage estimates from the KFF and removing the population under 13 years old.
 ```{r}
-new_pop <- full_join(pop_sex, pop_less13, by = join_by(Location))
+new_pop <- list(total_pop, pop_less13, us_sex_pop)
+
+new_pop <- reduce(new_pop, inner_join, by = join_by(Location))
 
 new_pop <- new_pop %>% 
   mutate(Male_Pop = round(Male * `Total:`),
@@ -127,12 +133,13 @@ df_pop <- new_pop %>%
             pop_female = sum(Female_Pop - Female_kid_pop))
 ```
 
+Merging dataframes. 
 ```{r}
 sex_df <- full_join(deaths_sex, df_pop, by = join_by(State == Location))
 
 sex_df <- full_join(sex_df, sex_dx)
 ```
-
+We need to repeat the steps above, but with race and ethnicity. We'll load the file containing information on the racial/ethnic make up of the population under 18. This contains a lot of data, so we'll be sure to only select the data we need. 
 ```{r}
 glimpse(kid_race)
 
@@ -152,7 +159,7 @@ kid_race <- kid_race %>%
 kid_race <- inner_join(kid_race, pop_less13)
 ```
 
-Let's estimate the number of children under 13 by race
+Let's estimate the number of children under 13 by race. We'll use mutate and across to provide these calculations for each columns for race/ ethnicity. Then, we'll merge and subtract the population under 13 years old from the analysis.
 ```{r}
 kid_race <- kid_race %>%
   mutate(across(2:5, ~ round( . * Less13)))
@@ -167,6 +174,7 @@ race_pop <- race_pop %>%
             Multiple_pop = sum(Multiple - Multiple_k))
 ```
 
+Merging datasets. 
 ```{r}
 race_df <- list(deaths_race, late_dx, new_dx)
 
@@ -175,6 +183,7 @@ race_df <- reduce(race_df, inner_join)
 race_df <- inner_join(race_df, race_pop, by = join_by(State == Location))
 ```
 
+Cleaning the file `Received Care`. I do some cleaning and merge appropriate dataframes, and use some base R to add a couple columns to `sex_df`.
 ```{r}
 rec_care <- rec_care %>%
   filter(!grepl("DC", `State Abbreviation`)) %>%
@@ -182,14 +191,15 @@ rec_care <- rec_care %>%
   select(1:3, contains("Percent of")) %>% 
   select(1:3, contains(c("Hispanic", "Black", "White", "Multiple","male")))
 
-sex_df$`Male_rec_care_percent`<- rec_care$`Percent of Males Living with HIV who Received HIV Care`
-sex_df$`Female_rec_care_percent`<- rec_care$`Percent of Females Living with HIV who Received HIV Care`
+sex_df$Male_rec_care_percent <- rec_care$`Percent of Males Living with HIV who Received HIV Care`
+sex_df$Female_rec_care_percent <- rec_care$`Percent of Females Living with HIV who Received HIV Care`
 
 rec_care <- rec_care %>%
   select(1:3, contains(c("Hispanic", "Black", "White", "Multiple")))
 
 race_df <- inner_join(race_df, rec_care)
 ```
+Repeat for file on `Viral Suppression`
 ```{r}
 v_sup <- v_sup %>%
   filter(!grepl("DC", `State Abbreviation`)) %>%
@@ -205,6 +215,7 @@ v_sup <- v_sup %>%
 race_df <- inner_join(race_df, v_sup)
 ```
 
+Cleaning Prevalence file
 ```{r}
 prev <- prev %>% 
   filter(!grepl("DC", `State Abbreviation`)) %>%
@@ -220,6 +231,9 @@ prev_race <-   prev %>%
 
 race_df <- full_join(race_df, prev_race)
 ```
+
+
+Some quick cleaning of the social determinant sof health file, and merging this with our two results dataframes `sex_df` and `race_df`.
 ```{r}
 sdoh <- sdoh %>% 
   filter(!grepl("DC", `State Abbreviation`)) %>% 
@@ -230,12 +244,12 @@ sex_df <- full_join(sex_df, sdoh)
 race_df <- full_join(race_df,sdoh)
 ```
 
-
+We have some more cleaning to, but let's save these files for now. 
 ```{r}
 saveRDS(sex_df, here("data/processed_data/sex_df.rds"))
 saveRDS(race_df, here("data/processed_data/race_df.rds"))
 ```
 
 ```{r}
-rm(deaths, df_pop, kid_pop, pop_sex, pop_less13, us_sex_pop, us_race_pop, new_pop, deaths_sex, race_pop, kid_race, total_pop, deaths_race, late_dx, new_dx, sex_dx, prev, prev_sex, prev_race, v_sup, rec_care)
+rm(deaths, df_pop, kid_pop, pop_sex, pop_less13, us_sex_pop, us_race_pop, new_pop, deaths_sex, race_pop, kid_race, total_pop, deaths_race, late_dx, new_dx, sex_dx, prev, prev_sex, prev_race, v_sup, rec_care, sdoh)
 ```

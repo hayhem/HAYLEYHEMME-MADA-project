@@ -259,6 +259,6 @@ ggpairs(X)
 ```
 
 ```{r}
-saveRDS(sex_df_ROE, here("data/process_data/sex_new.rds"))
+saveRDS(sex_df_ROE, here("data/processed_data/sex_new.rds"))
 ```
 

@@ -7,7 +7,8 @@ library(here)
 ```{r}
 sex_df <- readRDS(here("data/processed_data/sex_df.rds"))
 ```
-Let's find the HIV death rate by sex
+
+Let's find the HIV death rate by sex. We use round to get x to the closest whole number.
 ```{r}
 sex_df <- sex_df %>% 
   mutate(Male_Rate = round(`Male Death Cases`/pop_male*1e5),
@@ -15,14 +16,16 @@ sex_df <- sex_df %>%
   select(!`Year`)
 ```
 
-Next, let's find the expected number of HIV deaths. First, we'll calculate lambda.
+Next, let's find the expected number of HIV deaths. First, we'll calculate lambda, which we will then multiply by population to get our expected number of deaths.
 ```{r}
-lambda_male <- sex_df %>% drop_na(`Male Death Cases`) %>% 
+lambda_male <- sex_df %>%
+  drop_na(`Male Death Cases`) %>% 
   drop_na(pop_male) %>% 
   summarize(lambda_male = sum(`Male Death Cases`)/sum(pop_male)) %>%
   as.numeric()
 
-lambda_female <- sex_df %>% drop_na(`Female Death Cases`) %>% 
+lambda_female <- sex_df %>%
+  drop_na(`Female Death Cases`) %>% 
   drop_na(pop_female) %>% 
   summarize(lambda_female = sum(`Female Death Cases`)/sum(pop_female)) %>%
   as.numeric()
@@ -32,12 +35,15 @@ sex_df <- sex_df %>%
          female_exp_deaths = round(pop_female *  lambda_female))
 ```
 
+Creating variable for ratio of observed deaths over expected deaths.
 ```{r}
 sex_df <- sex_df %>% 
   mutate(ratio_OE_male = `Male Death Cases` / male_exp_deaths,
          ratio_OE_female = `Female Death Cases` / female_exp_deaths)
 ```
 
+
+Let's tidy this all up. We'll separate the dataframe briefly by sex, then re-join!
 ```{r}
 female_df <- sex_df %>% select(1:3, contains("female"), 23:35) 
 male_df <- sex_df %>% select(1:3, !contains("female")) 
@@ -76,7 +82,7 @@ male_df <- male_df %>%
 sex_df <- full_join(female_df, male_df)
 
 ```
-
+Save the file. Next, we'll clean up the file for race/ethnicity.
 ```{r}
 saveRDS(sex_df, here("data/processed_data/sex_df_cleaned.rds"))
 ```
