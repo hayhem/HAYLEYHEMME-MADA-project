@@ -1,6 +1,6 @@
 ---
 title: "Manuscript Template for a Data Analysis Project"
-subtitle: "Exploring Factors influencing HIV-related Mortality Rates in the Georgia -- 2018 - 2020"
+subtitle: "Spatial Investigation and Exploration of Factors influencing HIV-related Mortality Rates in the United States"
 author: Hayley Hemme
 date: "`r Sys.Date()`"
 format:

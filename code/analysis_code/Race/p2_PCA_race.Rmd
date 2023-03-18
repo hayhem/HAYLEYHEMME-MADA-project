@@ -1,0 +1,65 @@
+```{r message=FALSE, warning=FALSE}
+library(ggcorrplot)
+library(FactoMineR)
+library(factoextra)
+library(spatialreg)
+library(MASS)
+library(here)
+library(tidyverse)
+
+df <- readRDS(here("data/processed_data/race_new.rds"))
+```
+
+
+```{r}
+pca_function <- function(race) {   
+  # filter race_df by the selected race/ethnicity
+  df <- df[df$Race == race,] 
+
+num_race <- df[,c(9:10, 16:25)]
+
+#normalization
+norm_race <- scale(num_race)
+print(head(norm_race))
+
+#setting up correlation matrix
+corr_matrix_race <- cor(norm_race)
+print(ggcorrplot(corr_matrix_race))
+
+#applying pca
+pca_race <- princomp(corr_matrix_race)
+print(summary(pca_race))
+#pca loadings
+print(pca_race$loadings[, 1:2])
+
+#Scree plot
+print(fviz_eig(pca_race, addlabels = TRUE))
+# Biplot of the attributes
+print(fviz_pca_var(pca_race, col.var = "darkblue"))
+
+#Contribution of each variable 
+print(fviz_cos2(pca_race, choice = "var", axes = 1:2))
+
+# Biplot of the attributes
+print(fviz_pca_var(pca_race, col.var = "cos2",
+             gradient.cols = c("darkblue", "orange", "green"),
+             repel = TRUE))
+# Variables in green are a good representation of the variable on that component.
+}
+```
+
+```{r}
+pca_function("Black")
+```
+
+```{r}
+pca_function("Hispanic")
+```
+
+```{r}
+pca_function("Multiple")
+```
+
+```{r}
+pca_function("White")
+```

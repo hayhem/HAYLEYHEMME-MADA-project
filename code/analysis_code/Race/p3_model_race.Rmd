@@ -1,0 +1,160 @@
+```{r message=FALSE, warning=FALSE}
+library(here)
+library(tidyverse)
+library(spdep)
+```
+
+```{r}
+df <- readRDS(here("data/processed_data/race_new.rds"))
+us_nabs <- readRDS(here("data/processed_data/us_nabs.rds"))
+
+#Subset to contiguous states
+us_nabs <- us_nabs %>%
+  filter(!grepl("AK", StateCode),
+         !grepl("HI", StateCode), 
+         !grepl("DC", StateCode))
+
+df <- df %>% 
+  filter(!grepl("Alaska", State),
+         !grepl("Hawaii", State)) %>% 
+  mutate(log_rate = log(`Death Rate (estimated)`+ 1))
+```
+
+Setting up functions for models
+```{r}
+  #poisson
+pois_function <- function(race) {
+  pois_race <- glm(`Death Cases` ~ `Median Household Income` +
+                       `Percent High School Education` +
+                       offset(log(`Population`)),
+                     data = df[df$Race == race,],
+                     family = poisson)
+  print(summary(pois_race))
+}
+
+  #Negative binomial
+nb_function  <- function(race) {
+  neg_bin_race <- glm.nb(`Death Cases` ~ `Median Household Income` +
+                              `Percent High School Education` + 
+                              offset(log(`Population`)),
+                            data = df[df$Race == race,])
+  print(summary(neg_bin_race))
+}
+
+  #Fitting CAR model (requires neighbors)
+car_function <- function(race) {   
+  # filter race_df by the selected race/ethnicity
+  df <- df[df$Race == race,] 
+  
+  
+  h_race_df <- matrix(0, nrow(df), nrow(df))
+  h_race_df[cbind(match(us_nabs$StateCode, df$`State Abbreviation`),
+                  match(us_nabs$NeighborStateCode, df$`State Abbreviation`))] <- 1
+  
+  nablist_race_df <- mat2listw(h_race_df, style = "W")
+  
+  car_race <- spautolm(log_rate ~ `Percent Living in Poverty` + 
+                             `Percent High School Education`,
+                           data = df,
+                           listw = nablist_race_df,
+                           family = "CAR")
+  print(summary(car_race))
+}
+```
+
+Fitting Poisson models
+```{r}
+pois_function("Black")
+```
+
+```{r}
+pois_function("Hispanic")
+```
+
+```{r}
+pois_function("Multiple")
+```
+
+```{r}
+pois_function("White")
+```
+
+Fitting Negative binomial models
+```{r}
+nb_function("Black")
+```
+
+```{r}
+nb_function("Hispanic")
+```
+
+```{r}
+nb_function("Multiple")
+```
+
+```{r}
+nb_function("White")
+```
+The NB model accounting for overdispersion fit better than the poisson model.
+
+Fitting CAR models
+```{r}
+car_function("Black")
+```
+
+```{r}
+car_function("Hispanic")
+```
+
+```{r}
+car_function("Multiple")
+```
+
+```{r}
+car_function("White")
+```
+The model accounting for spatial variation provide the best fit.
+
+Creating function that subsets by specified race, and compute/ plots Moran's I and lisa.
+```{r}
+spacy_function <- function(race) {
+  # filter race_df by the selected race/ethnicity
+  df <- df[df$Race == race,]
+  
+  h_race_df <- matrix(0, nrow(df), nrow(df))
+  h_race_df[cbind(match(us_nabs$StateCode, df$`State Abbreviation`),
+  match(us_nabs$NeighborStateCode, df$`State Abbreviation`))] <- 1
+  
+  nablist_race_df <- mat2listw(h_race_df, style = "W")
+
+ # plot Moran's I
+  par(mfrow=c(1,2))
+  print(moran.test(df$BOX, nablist_race_df, zero.policy = TRUE, randomisation = FALSE))
+  moran.plot(df$BOX, nablist_race_df, zero.policy = TRUE)
+  
+  # calculate and print LISA statistics
+  lisa_race <- localmoran(df$`Ratio Observed/Expected`, nablist_race_df)
+  summary(lisa_race[,1])
+}
+```
+
+```{r}
+spacy_function("Black")
+```
+
+```{r}
+spacy_function("Hispanic")
+```
+
+```{r}
+spacy_function("Multiple")
+```
+
+```{r}
+spacy_function("White")
+```
+
+
+```{r}
+save.image(file="../../data/processed_data/race_env.rds")
+```

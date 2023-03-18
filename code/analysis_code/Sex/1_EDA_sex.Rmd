@@ -277,7 +277,7 @@ sex_df_SMR %>%
 par(mfrow=c(1,3))
 plot(lm(sex_df_SMR$YJ ~ 1))
 ```
-The Yeo Johnson transformation was only able to normalize the SMR for male, but not females or for both sexes combined.
+The Yeo Johnson transformation was only able to normalize the SMR for male, but not females or for both sexes combined. 
 
 Plotting correlation matrix
 ```{r message=FALSE, warning=FALSE}

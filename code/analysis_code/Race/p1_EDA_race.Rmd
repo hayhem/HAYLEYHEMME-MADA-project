@@ -1,0 +1,170 @@
+```{r message=FALSE, warning=FALSE}
+library(here)
+library(spdep)
+library(GGally)
+library(skimr)
+library(ggfortify)
+library(MASS)
+library(ggcorrplot)
+library("FactoMineR")
+library(tidyverse)
+```
+https://github.com/ubikuity/List-of-neighboring-states-for-each-US-state
+List-of-neighboring-states-for-each-US-state
+```{r}
+race_df <- readRDS(here("data/processed_data/race_df_cleaned.rds"))
+us_nabs <- readRDS(here("data/processed_data/us_nabs.rds"))
+
+#Subsetting to only contiguous states.
+race_df <- race_df %>%
+  filter(!grepl("Alaska", State),
+         !grepl("Hawaii", State))
+
+us_nabs <- us_nabs %>%
+  filter(!grepl("AK", StateCode),
+         !grepl("HI", StateCode), 
+         !grepl("DC", StateCode))
+```
+
+```{r}
+autoplot(lm(race_df$`Death Rate (AIDSVu)` ~ 1))
+autoplot(lm(race_df$`Death Rate (estimated)` ~ 1))
+autoplot(lm(race_df$`Ratio Observed/Expected` ~ 1))
+```
+
+```{r}
+race_df %>% 
+  ggplot() +
+  geom_histogram(aes(x = `Death Rate (estimated)`, fill = Race), bins = 10)
+shapiro.test(race_df$`Death Rate (estimated)`)
+
+race_df %>% 
+  ggplot() +
+  geom_histogram(aes(x = `Ratio Observed/Expected`, fill = Race), bins = 10)
+shapiro.test(race_df$`Ratio Observed/Expected`)
+```
+Both histograms show a positively skewed distribution. ROE appears to be the slightest bit more normal.
+
+```{r}
+race_df %>% 
+  ggplot() +
+  geom_histogram(aes(x = log(`Death Rate (estimated)` + 1), fill = Race) , bins = 10)
+shapiro.test(log(race_df$`Death Rate (estimated)` + 1))
+
+race_df %>% 
+  ggplot() +
+  geom_histogram(aes(x = log(`Ratio Observed/Expected` + 1), fill = Race) , bins = 10)
+shapiro.test(log(race_df$`Ratio Observed/Expected` + 1))
+```
+The log transformation of Death Rate better fit, but there is still sufficient evidence to reject normality.
+
+```{r}
+race_df_DR <- race_df %>% 
+  filter(`Death Rate (estimated)` > 0)
+b_DR <-  boxcox(lm(race_df_DR$`Death Rate (estimated)` ~ 1))
+lambda_DR <- b_DR$x[which.max(b_DR$y)]
+
+race_df_ROE <- race_df %>% 
+  filter(`Ratio Observed/Expected` > 0)
+
+b_ROE <-  boxcox(lm(race_df_ROE$`Ratio Observed/Expected` ~ 1))
+lambda_ROE <- b_ROE$x[which.max(b_ROE$y)]
+```
+
+We'll create a function to carry out the box cox transformation [cite](https://stats.stackexchange.com/questions/1444/how-should-i-transform-non-negative-data-including-zeros)
+```{r}
+box_cox <- function(x, lambda) {
+
+    eps <- 0.00001
+    if (abs(lambda) < eps)
+        log(x)
+    else
+        (x ^ lambda - 1) / lambda
+
+}
+```
+
+Box Cox transformation of DR and results of shapiro test.
+```{r}
+race_df_DR %>%
+  mutate(BOX = box_cox(`Death Rate (estimated)`, lambda_DR)) %>%
+  ggplot() + geom_histogram(aes(x= BOX, fill = Race), bins = 10) + facet_wrap(. ~ Race)
+
+race_df_DR <- race_df_DR %>%
+  mutate(BOX = box_cox(`Death Rate (estimated)`, lambda_DR))
+
+race_df_DR %>%
+  pull(BOX) %>% 
+  shapiro.test()
+##Reject normality
+
+race_df_DR %>%
+  filter(Race == "Black") %>% 
+  pull(BOX) %>% 
+  shapiro.test()
+##Fail to reject normality
+
+race_df_DR %>%
+  filter(Race == "White") %>% 
+  pull(BOX) %>% 
+  shapiro.test()
+##Reject normality
+
+race_df_DR %>%
+  filter(Race == "Hispanic") %>% 
+  pull(BOX) %>% 
+  shapiro.test()
+##Fail to reject normality
+
+race_df_DR %>%
+  filter(Race == "Multiple") %>% 
+  pull(BOX) %>% 
+  shapiro.test()
+##Fail to reject normality
+
+par(mfrow=c(1,3))
+plot(lm(race_df_DR$BOX ~ 1))
+```
+Successful transformation of death rate among of Black, Hispanic, and Multiple racial backgrounds persons.
+
+Box Cox transformation of ROE and results of Shapiro test.
+```{r}
+race_df_ROE %>%
+  mutate(BOX = box_cox(`Ratio Observed/Expected`, lambda_ROE)) %>%
+  ggplot() + geom_histogram(aes(x= BOX, fill = Race), bins = 10) + facet_wrap(. ~ Race)
+
+race_df_ROE <- race_df_ROE %>%
+  mutate(BOX = box_cox(`Ratio Observed/Expected`, lambda_ROE))
+
+race_df_ROE %>%
+  pull(BOX) %>% 
+  shapiro.test()
+
+race_df_ROE %>%
+  filter(Race == "Black") %>% 
+  pull(BOX) %>% 
+  shapiro.test()
+
+race_df_ROE %>%
+  filter(Race == "White") %>% 
+  pull(BOX) %>% 
+  shapiro.test()
+
+race_df_ROE %>%
+  filter(Race == "Hispanic") %>% 
+  pull(BOX) %>% 
+  shapiro.test()
+
+race_df_ROE %>%
+  filter(Race == "Multiple") %>% 
+  pull(BOX) %>% 
+  shapiro.test()
+
+par(mfrow=c(1,3))
+plot(lm(race_df_ROE$BOX ~ 1))
+```
+
+Let's save the dataframe for ROE since after the Box Cox transformation for all races was better with ROE than DR.
+```{r}
+saveRDS(race_df_ROE, here("data/processed_data/race_new.rds"))
+```

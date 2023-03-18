@@ -1,4 +1,4 @@
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(here)
 library(tidyverse)
 library(spdep)
@@ -24,7 +24,7 @@ male_df <- sex_df %>%
 
 h_male <- matrix(0, nrow(male_df), nrow(male_df))
 h_male[cbind(match(us_nabs$StateCode, male_df$`State Abbreviation`), match(us_nabs$NeighborStateCode, male_df$`State Abbreviation`))]<-1
-nablist_male <- mat2listw(h_male)
+nablist_male <- mat2listw(h_male, style = "W")
 ```
 
 
@@ -45,11 +45,13 @@ female_df <- sex_df %>%
          Sex == "Female")
 us_nabs_f <- us_nabs %>%
   filter(!grepl("VT", StateCode),
-         !grepl("NH", StateCode))
+         !grepl("NH", StateCode),
+         !grepl("VT", NeighborStateCode),
+         !grepl("NH", NeighborStateCode))
 
 h_female <- matrix(0, nrow(female_df), nrow(female_df))
 h_female[cbind(match(us_nabs_f$StateCode, female_df$`State Abbreviation`), match(us_nabs_f$NeighborStateCode, female_df$`State Abbreviation`))]<-1
-nablist_female <- mat2listw(h_female)
+nablist_female <- mat2listw(h_female, style ="W")
 
 par(mfrow=c(1,2))
 moran.test(female_df$BOX, nablist_female, zero.policy = TRUE, randomisation = FALSE)
