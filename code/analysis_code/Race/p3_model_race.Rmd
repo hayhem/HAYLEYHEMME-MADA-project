@@ -1,6 +1,8 @@
 ```{r message=FALSE, warning=FALSE}
 library(here)
 library(tidyverse)
+library(MASS)
+library(spatialreg)
 library(spdep)
 ```
 

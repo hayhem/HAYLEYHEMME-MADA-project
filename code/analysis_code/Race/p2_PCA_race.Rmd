@@ -10,12 +10,13 @@ library(tidyverse)
 df <- readRDS(here("data/processed_data/race_new.rds"))
 ```
 
-
+CREATING PCA FUNCTION
 ```{r}
 pca_function <- function(race) {   
   # filter race_df by the selected race/ethnicity
   df <- df[df$Race == race,] 
 
+#Selecting variables
 num_race <- df[,c(9:10, 16:25)]
 
 #normalization

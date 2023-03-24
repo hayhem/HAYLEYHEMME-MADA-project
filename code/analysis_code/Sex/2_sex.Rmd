@@ -57,7 +57,8 @@ par(mfrow=c(1,2))
 moran.test(female_df$BOX, nablist_female, zero.policy = TRUE, randomisation = FALSE)
 moran.plot(female_df$BOX, nablist_female, zero.policy = TRUE)
 
-lisa_female <-localmoran(female_df$`Ratio Observed/Expected`,  nablist_female)
-summary(lisa_female[,1])
+##THE CODE BELOW IS A THROWING AN ERROR. 
+# lisa_female <-localmoran(female_df$`Ratio Observed/Expected`,  nablist_female)
+#summary(lisa_female[,1])
 ```
 
