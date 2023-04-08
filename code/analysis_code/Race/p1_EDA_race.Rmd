@@ -42,6 +42,7 @@ race_df %>%
   ggplot() +
   geom_histogram(aes(x = `Ratio Observed/ Expected`, fill = Race), bins = 10)
 shapiro.test(race_df$`Ratio Observed/ Expected`)
+ggsave(here("results/raw_roe_hist.png"), units="in", width=10, height=7, dpi=300)
 ```
 Both histograms show a positively skewed distribution. 
 
@@ -135,6 +136,17 @@ race_df_ROE %>%
   ggplot() +
   geom_histogram(aes(x= BOX, fill = Race), bins = 10) +
   facet_wrap(. ~ Race) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(x = "Box Cox Transformation of Observed/ Expected HIV Mortality Ratio", y = "Count")
+
+
+ggsave(here("results/box_hist_facet.png"), units="in", width=10, height=7, dpi=300)
+
+race_df_ROE %>%
+  mutate(BOX = box_cox(`Ratio Observed/ Expected`, lambda_ROE)) %>%
+  ggplot() +
+  geom_histogram(aes(x= BOX, fill = Race), bins = 10) +
   theme_classic() +
   theme(legend.position = "none") +
   labs(x = "Box Cox Transformation of Observed/ Expected HIV Mortality Ratio", y = "Count")

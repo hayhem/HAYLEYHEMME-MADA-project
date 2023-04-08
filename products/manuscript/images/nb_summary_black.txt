@@ -1,0 +1,31 @@
+
+Call:
+glm.nb(formula = `Death Cases` ~ `Median Household Income` + 
+    `Percent High School Education` + offset(log(Population)), 
+    data = df[df$Race == race, ], init.theta = 7.295443266, link = log)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.0388  -0.8185  -0.4123   0.4594   2.6857  
+
+Coefficients:
+                                  Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                      2.575e-01  2.361e+00   0.109   0.9132    
+`Median Household Income`        1.782e-05  6.086e-06   2.929   0.0034 ** 
+`Percent High School Education` -1.123e-01  2.781e-02  -4.038 5.39e-05 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for Negative Binomial(7.2954) family taken to be 1)
+
+    Null deviance: 63.697  on 47  degrees of freedom
+Residual deviance: 47.324  on 45  degrees of freedom
+AIC: 412.68
+
+Number of Fisher Scoring iterations: 1
+
+
+              Theta:  7.30 
+          Std. Err.:  1.82 
+
+ 2 x log-likelihood:  -404.685 

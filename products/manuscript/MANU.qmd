@@ -1,6 +1,6 @@
 ---
-title: "Manuscript Template for a Data Analysis Project"
-subtitle: "Spatial Investigation and Exploration of Factors influencing HIV-related Mortality Rates in the United States"
+title: "Spatial Investigation and Exploration of Factors influencing HIV-related Mortality"
+subtitle: "United States, 2020"
 author: Hayley Hemme
 date: "`r Sys.Date()`"
 format:
@@ -8,7 +8,7 @@ format:
     toc: false
     number-sections: true
     highlight-style: github
-bibliography: ../dataanalysis_template_references.bib
+bibliography: ../dataanalysis_references.bib
 csl: ../apa.csl
 ---
 
@@ -30,15 +30,13 @@ library(here)
 
 # Introduction
 
-
 ## General Background Information
 
 *Provide enough background on your topic that others can understand the why and how of your analysis*
 
 ## Description of data and data source
 
-The data used in this project was obtained from multiple publicly available source. Data pertaining to HIV deaths, new diagnoses, HIV-related outcomes, and social determinants of health relating to HIV were obtained from AIDSVu. [AIDSVu](https://aidsvu.org/resources/#/datasets). Population data for on persons of race/ethnicities included in the analysis and total population was obtained from the [U.S. Census Bureau](https://data.census.gov/). Percentage population make-up by sex was obtained from [KFF](https://www.kff.org/other/state-indicator/) . Percentage distribution of persons under 14 was obtained from Kids Count [Kids Count](https://datacenter.kidscount.org/). 
-All data described was aggregated at the the state-level.
+The data used in this project was obtained from multiple publicly available source. Data pertaining to HIV deaths, new diagnoses, HIV-related outcomes, and social determinants of health relating to HIV were obtained from AIDSVu. [AIDSVu](https://aidsvu.org/resources/#/datasets). Population data for on persons of race/ethnicities included in the analysis and total population was obtained from the [U.S. Census Bureau](https://data.census.gov/). Percentage population make-up by sex was obtained from [KFF](https://www.kff.org/other/state-indicator/) . Percentage distribution of persons under 14 was obtained from Kids Count [Kids Count](https://datacenter.kidscount.org/). All data described was aggregated at the the state-level.
 
 ## Questions/Hypotheses to be addressed
 
@@ -48,14 +46,13 @@ H0 : There is not a spatial correlation HIV-related deaths and SDOH or HIV-relat
 
 Ha : There is a spatial correlation between HIV-related deaths and SDOH or HIV-related outcomes.
 
-
 {{< pagebreak >}}
 
 # Methods
 
 I used a number of different methods throughout the various stages of this analysis. To ensure that data importation was simple and reproducible, I used `library(here)`. The vast majority of data cleaning processes were achieved using functions within the `tidyverse`. Some of these processes included renaming, pivoting, selecting, and mutating variables. Additionally, most of the data visualization and maps were obtained using ggplot2, with a few exceptions being packages with functions that are not compatible with the `tidyverse` and simple model diagnostics that base R. During the data visualization process, it became apparent that the dependent variable would require transformation. Data transformation methods of increasing complexity were performed. Ultimately, a Box Cox transformation was able normalize out dependent variable. A small value was added to each observation to ensure that all were greater than 0. To help assess relationships between variables, I performed a correlation analysis, most using principle component analysis (PCA). Data analysis methods were performed in order of increasing complexity, beginning with simple linear regression, then Poisson regression, negative-binomial regression, and finally a conditional autoregessive model (CAR) to account for spatial dependence. Models were judged for goodness of fit using AIC.
 
-## Data aquisition
+## Data acquisition
 
 *As applicable, explain where and how you got the data. If you directly import the data from an online source, you can combine this section with the next.*
 
@@ -69,7 +66,7 @@ All data used in this analysis were obtained from publicly available sources, as
 
 ## Statistical analysis
 
-Spatial dependence assessed using Moran's I. 
+Spatial dependence assessed using Moran's I.
 
 {{< pagebreak >}}
 
@@ -77,19 +74,34 @@ Spatial dependence assessed using Moran's I.
 
 ## Exploratory/Descriptive analysis
 
+```{r}
 
-*Use a combination of text/tables/figures to explore and describe your data. Show the most important descriptive results here. Additional ones should go in the supplement. Even more can be in the R and Quarto files that are part of your project.*
+```
+
+![Histogram of the distribution of the ratio for observed/ expected cases(raw)](images/raw_roe_hist.png){width="300"}
+
+![Histogram of the distribution of ratio of observed/ expected mortality after Box-Cox transformation](images/box_hist-01.png){width="300"}
+
+![Diagnostics for Box Cox Transformed Ratio Observed/ Expected](images/box_diag.png){width="300"}*Use a combination of text/tables/figures to explore and describe your data. Show the most important descriptive results here. Additional ones should go in the supplement. Even more can be in the R and Quarto files that are part of your project.*
 
 ## Basic statistical analysis
 
-*To get some further insight into your data, if reasonable you could compute simple statistics (e.g. simple models with 1 predictor) to look for associations between your outcome(s) and each individual predictor variable. Though note that unless you pre-specified the outcome and main exposure, any "p\<0.05 means statistical significance" interpretation is not valid.*
+|                                                     |                                                     |
+|-----------------------|------------------------|
+| ![Black](images/moran_black-01.png){width="200"}    | ![Multiple](images/moran_multiple.png){width="200"} |
+| ![Hispanic](images/moran_hispanic.png){width="200"} | ![White](images/moran_white.png){width="200"}       |
 
+*To get some further insight into your data, if reasonable you could compute simple statistics (e.g. simple models with 1 predictor) to look for associations between your outcome(s) and each individual predictor variable. Though note that unless you pre-specified the outcome and main exposure, any "p\<0.05 means statistical significance" interpretation is not valid.*
 
 ## Full analysis
 
 *Use one or several suitable statistical/machine learning methods to analyze your data and to produce meaningful figures, tables, etc. This might again be code that is best placed in one or several separate R scripts that need to be well documented. You want the code to produce figures and data ready for display as tables, and save those. Then you load them here.*
 
-
+|                                              |                                         |
+|-----------------------------|------------------------------|
+| ![](images/raw_rate_map-02.png){width="250"} | ![](images/roe_map-03.png){width="250"} |
+| ![](images/roe_box_map-01.png){width="250"}  | ![](images/chi_map-02.png){width="250"} |
+| ![](images/fitted_map-02.png){width="250"}   |                                         |
 
 {{< pagebreak >}}
 
