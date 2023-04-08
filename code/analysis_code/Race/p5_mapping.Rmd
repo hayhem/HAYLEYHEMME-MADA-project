@@ -1,0 +1,157 @@
+In this section, I will be creating some maps of the data. I'll start by loading some package and the dataframes.
+
+```{r}
+library(here)
+library(tidyverse)
+library(spdep)
+
+#loading a spatial object for the contiguous US. 
+
+states <- map_data("state")
+
+df <- readRDS(here("data/processed_data/race_fit.rds"))
+```
+
+I do a bit more cleaning to the data to tidy things up...
+```{r}
+df <- df %>%
+  mutate(region = tolower(State)) %>% 
+  replace(is.na("Ratio Observed/ Expected"), 0) %>% 
+  mutate(Exp_DR = Exp_Deaths/Population *1e5,
+               OE_mortality_ratio = `Death Rate (estimated)`/Exp_DR,
+         dykes_chi = ((`Death Cases`- Exp_Deaths)/ sqrt(Exp_Deaths)),
+         predicted_observed_risk = fitted_values/`Death Cases`,
+         predicted_observed_risk = ifelse(!is.finite(predicted_observed_risk), 0, predicted_observed_risk),
+         observed_predicted_risk = `Death Cases`/fitted_values,
+         observed_predicted_risk = ifelse(!is.finite(observed_predicted_risk), 0, observed_predicted_risk))
+```
+
+Next, I will merge my dataframe contain the variables of interest with the spatial object. 
+```{r}
+df_sf <- merge(states,df, by = "region")
+# This next step is import to ensure that no "holes" appear in the map.
+df_sf <- df_sf[order(df_sf$order), ]
+```
+
+Now I'm ready to start mapping! I'll begin by looking at the map of the raw HIV death rate across to contiguous US by selected race/ ethnicities.
+```{r}
+ggplot(df_sf, aes(long, lat)) +
+  geom_polygon(aes(group = group, fill =`Death Rate (estimated)`)) +
+  coord_map("albers",  lat0 = 45.5, lat1 = 29.5) +
+  facet_wrap(. ~ Race)  + theme_void() + 
+  theme(strip.text = element_text(size = 14),
+        legend.position = "bottom") +
+  labs(title = "HIV Mortality Rate (raw) by Race/ Ethnicity in the United States, 2020", x = "", y = "", fill = "Deaths per 100,000") +
+  scale_fill_distiller(palette = "RdYlGn")
+```
+The map for HIV-related death differs drastically across the United States by race/ethnicity. In most states, the highest HIV-related death were among Black person. This is especially true in the South region. Non-coastal western states consistently had lowest rates HIV-related deaths across the selected racial/ethnic groups, expect among multi-racial non-Hispanic persons. Non-Hispanic White persons were the only of the selected racial/ ethnic group that did not have a HIV-related death rate higher than ~10 per 100,000.
+
+
+Next, let's map a probability map based on where we'd expect deaths if risk of HIV-related death was consistent across the US.
+```{r}
+ggplot(df_sf, aes(long, lat)) +
+  geom_polygon(aes(group = group, fill = Exp_DR)) +
+  coord_map("albers",  lat0 = 45.5, lat1 = 29.5) +
+  facet_wrap(. ~ Race) +
+  scale_fill_viridis_c() + theme_classic() + 
+  theme(strip.text = element_text(size = 14),
+    strip.background = element_blank(),
+        axis.ticks = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_blank(),
+        legend.position = "bottom") +
+  labs(title = "NULL - Expected HIV Mortality Rate by Race/ Ethnicity
+       in the United States, 2020", x = "", y = "", fill = "Rate")
+```
+Well.. I probably need to go back and reconsider using making a lambda based on specific race/ ethnic. I think that at this point, however, it is still fair to consider mapping an observed/ expected ratio using the expected deaths calculate from the lambda for the entire population. This will allow us to see differences across the race/ ethnicity, rather than masking disparities in rates due higher expected cases among certain high-risk populations, which would thus make the ratio closer to the null.
+
+
+Let's map the observed/ expected ratio.
+```{r}
+ggplot(df_sf, aes(long, lat)) +
+  geom_polygon(aes(group = group, fill = OE_mortality_ratio)) +
+  coord_map("albers",  lat0 = 45.5, lat1 = 29.5) +
+  facet_wrap(. ~ Race) +
+  scale_fill_viridis_c() + theme_classic() + 
+  theme(strip.text = element_text(size = 14),
+    strip.background = element_blank(),
+        axis.ticks = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_blank(),
+        legend.position = "bottom") +
+  labs(title = "Observed/ Expected HIV Mortality Ratio by Race/ Ethnicity in the United States, 2020", x = "", y = "", fill = "Ratio")
+```
+We can see that non-Hispanic Black persons had ratios consistently (much) greater than 1, suggesting a high risk among this population.
+
+
+Next, let's using Dykes and Unwin's method of smooth map using a chi square value. 
+```{r}
+ggplot(df_sf, aes(long, lat)) +
+  geom_polygon(aes(group = group, fill = dykes_chi)) +
+  coord_map("albers",  lat0 = 45.5, lat1 = 29.5) +
+  facet_wrap(. ~ Race)  + theme_classic() + 
+  theme(strip.text = element_text(size = 14),
+        strip.background = element_blank(),
+        axis.ticks = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_blank(),
+        legend.position = "bottom") +
+  labs(title = "Dyke's Chi Square by Race/ Ethnicity in the United States, 2020", x = "", y = "", fill = "Dykes and Unwin's Chi Square") +
+  scale_fill_distiller(palette = "RdYlGn")
+```
+##Dykes and Unwin’s chi-square statistic
+Dykes and Unwin (Dykes and Unwin 2001) technique  has the effect of creating a distribution of values closer to normal (as opposed to a Poisson distribution of rates and counts encountered thus far). We can therefore apply a diverging color scheme where green hues represent less than expected rates and red hues represent greater than expected rates.
+
+
+https://mgimond.github.io/Spatial/mapping-rates-in-r.html
+```{r}
+E.Best <- EBest(df_sf$`Death Cases`,df_sf$Population)
+df_sf$EBest <- E.Best$estmm * 100000
+library(classInt)
+brks1 <- classIntervals(df_sf$EBest, n = 10, style = "quantile")
+
+library(RColorBrewer)
+ggplot(df_sf, aes(long, lat)) +
+  geom_polygon(aes(group = group, fill =`Death Rate (estimated)`)) +
+  scale_fill_gradientn(colors = rev(brewer.pal(9, "RdYlGn")), 
+                       breaks = round(brks1$brks)) +
+  coord_map("albers",  lat0 = 45.5, lat1 = 29.5) +
+  facet_wrap(. ~ Race)  + 
+  theme_void() + 
+  theme(strip.text = element_text(size = 14),
+        legend.position = "bottom",
+        legend.key.width = unit(1.5, "cm"), # Adjust the width of the legend
+        legend.key.height = unit(0.5, "cm")) + # Adjust the height of the legend
+  guides(fill = guide_colorbar(barwidth = 50, barheight = 1)) # Adjust the size of the colorbar
+```
+
+
+Next, let's make a map using the fitted values from the CAR model, the best performing model.
+```{r}
+##Smoothed map using fitted values.
+ggplot(df_sf, aes(long, lat)) +
+  geom_polygon(aes(group = group, fill = fitted_values)) +
+  scale_fill_gradientn(colors = rev(brewer.pal(9, "RdYlGn"))) +
+  coord_map("albers",  lat0 = 45.5, lat1 = 29.5) +
+  facet_wrap(. ~ Race)  + 
+  theme_void() + 
+  theme(strip.text = element_text(size = 14),
+        legend.position = "bottom") 
+``` 
+
+Next, let's look at the map for the ratio of predicted to observed (P/O) values. 
+```{r}
+ggplot(df_sf, aes(long, lat)) +
+  geom_polygon(aes(group = group, fill = predicted_observed_risk)) +
+  scale_fill_gradientn(colors = rev(brewer.pal(9, "RdYlGn"))) +
+  coord_map("albers",  lat0 = 45.5, lat1 = 29.5) +
+  facet_wrap(. ~ Race)  + 
+  theme_void() + 
+  theme(strip.text = element_text(size = 14),
+        legend.position = "bottom") 
+``` 
+
+Interesting... While the AIC suggest that the CAR model performs well, the model has negative predicted values. This is problematic and suggests that it is not well-suited to the data.
+Regardless, a higher P/O ratio (more red values) indicates that the model overestimated the observed values, while a lower P/O ratio (more green values) indicates that the model underestimates the observed values.
+
+

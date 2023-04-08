@@ -1,0 +1,26 @@
+
+Call:
+glm(formula = `Death Cases` ~ `Median Household Income` + `Percent High School Education` + 
+    offset(log(Population)), family = poisson, data = df[df$Race == 
+    race, ])
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-10.266   -3.782   -1.968   -0.505   34.033  
+
+Coefficients:
+                                  Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                     -1.383e+01  5.548e-01 -24.919  < 2e-16 ***
+`Median Household Income`        9.091e-06  1.794e-06   5.068 4.03e-07 ***
+`Percent High School Education`  4.080e-02  5.959e-03   6.846 7.57e-12 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 1800.6  on 47  degrees of freedom
+Residual deviance: 1738.9  on 45  degrees of freedom
+AIC: 1951
+
+Number of Fisher Scoring iterations: 5
+

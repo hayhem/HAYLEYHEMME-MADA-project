@@ -1,0 +1,79 @@
+```{r message=FALSE, warning=FALSE}
+library(here)
+library(tidyverse)
+library(spdep)
+```
+
+```{r}
+sex_df <- readRDS(here("data/processed_data/sex_new.rds"))
+us_nabs <- readRDS(here("data/processed_data/us_nabs.rds"))
+
+us_nabs <- us_nabs %>%
+  filter(!grepl("AK", StateCode),
+         !grepl("HI", StateCode), 
+         !grepl("DC", StateCode))
+```
+
+```{r}
+male_df <- sex_df %>%
+  filter(!grepl("Alaska", State),
+         !grepl("Hawaii", State),
+         Sex == "Male")
+
+#Making empty matrix
+h_male <- matrix(0, nrow(male_df), nrow(male_df))
+
+#filling matrix with '1' for neighbors
+h_male[cbind(match(us_nabs$StateCode, male_df$`State Abbreviation`), 
+             match(us_nabs$NeighborStateCode,
+                   male_df$`State Abbreviation`))] <- 1
+
+nablist_male <- mat2listw(h_male, style = "W")
+```
+
+
+```{r}
+#carrying out Moran's test - global
+par(mfrow=c(1,2))
+moran.test(male_df$BOX, 
+           nablist_male,
+           zero.policy = TRUE, 
+           randomisation = FALSE)
+moran.plot(male_df$BOX, 
+           nablist_male, 
+           zero.policy = TRUE)
+
+#carrying out local Moran's test 
+lisa_male <-localmoran(male_df$`Ratio Observed/Expected`,  nablist_male)
+summary(lisa_male[,1])
+```
+
+Doing the same for females...
+```{r}
+female_df <- sex_df %>%
+  filter(!grepl("Alaska", State),
+         !grepl("Hawaii", State),
+         Sex == "Female") %>% 
+  mutate(BOX = ifelse(is.na(BOX),0, BOX)) # replacing NA with zeros so that we can run the Moran's test.
+
+h_female <- matrix(0, nrow(female_df), nrow(female_df))
+h_female[cbind(match(us_nabs$StateCode, 
+                     female_df$`State Abbreviation`), 
+               match(us_nabs$NeighborStateCode, 
+                     female_df$`State Abbreviation`))] <-1
+nablist_female <- mat2listw(h_female, style ="W")
+
+par(mfrow=c(1,2))
+moran.test(female_df$BOX,
+           nablist_female,
+           zero.policy = TRUE, 
+           randomisation = FALSE)
+
+moran.plot(female_df$BOX, 
+           nablist_female,
+           zero.policy = TRUE)
+
+lisa_female <-localmoran(female_df$`Ratio Observed/Expected`,  nablist_female)
+summary(lisa_female[,1])
+```
+

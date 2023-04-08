@@ -44,23 +44,27 @@ print(fviz_cos2(pca_race, choice = "var", axes = 1:2))
 # Biplot of the attributes
 print(fviz_pca_var(pca_race, col.var = "cos2",
              gradient.cols = c("darkblue", "orange", "green"),
-             repel = TRUE))
+             repel = TRUE, title = race))
 # Variables in green are a good representation of the variable on that component.
 }
 ```
 
 ```{r}
 pca_function("Black")
+ggsave(here("results/pca_black.png"), units="in", width=10, height=7, dpi=300)
 ```
 
 ```{r}
 pca_function("Hispanic")
+ggsave(here("results/pca_hispanic.png"), units="in", width=10, height=7, dpi=300)
 ```
 
 ```{r}
 pca_function("Multiple")
+ggsave(here("results/pca_multiple.png"), units="in", width=10, height=7, dpi=300)
 ```
 
 ```{r}
 pca_function("White")
+ggsave(here("results/pca_white.png"), units="in", width=10, height=7, dpi=300)
 ```

@@ -29,7 +29,7 @@ us_nabs <- us_nabs %>%
 ```{r}
 autoplot(lm(race_df$`Death Rate (AIDSVu)` ~ 1))
 autoplot(lm(race_df$`Death Rate (estimated)` ~ 1))
-autoplot(lm(race_df$`Ratio Observed/Expected` ~ 1))
+autoplot(lm(race_df$`Ratio Observed/ Expected` ~ 1))
 ```
 
 ```{r}
@@ -40,10 +40,10 @@ shapiro.test(race_df$`Death Rate (estimated)`)
 
 race_df %>% 
   ggplot() +
-  geom_histogram(aes(x = `Ratio Observed/Expected`, fill = Race), bins = 10)
-shapiro.test(race_df$`Ratio Observed/Expected`)
+  geom_histogram(aes(x = `Ratio Observed/ Expected`, fill = Race), bins = 10)
+shapiro.test(race_df$`Ratio Observed/ Expected`)
 ```
-Both histograms show a positively skewed distribution. ROE appears to be the slightest bit more normal.
+Both histograms show a positively skewed distribution. 
 
 ```{r}
 race_df %>% 
@@ -53,8 +53,8 @@ shapiro.test(log(race_df$`Death Rate (estimated)` + 1))
 
 race_df %>% 
   ggplot() +
-  geom_histogram(aes(x = log(`Ratio Observed/Expected` + 1), fill = Race) , bins = 10)
-shapiro.test(log(race_df$`Ratio Observed/Expected` + 1))
+  geom_histogram(aes(x = log(`Ratio Observed/ Expected` + 1), fill = Race) , bins = 10)
+shapiro.test(log(race_df$`Ratio Observed/ Expected` + 1))
 ```
 The log transformation of Death Rate better fit, but there is still sufficient evidence to reject normality.
 
@@ -65,10 +65,11 @@ b_DR <-  boxcox(lm(race_df_DR$`Death Rate (estimated)` ~ 1))
 lambda_DR <- b_DR$x[which.max(b_DR$y)]
 
 race_df_ROE <- race_df %>% 
-  filter(`Ratio Observed/Expected` > 0)
+  filter(`Ratio Observed/ Expected` > 0)
 
-b_ROE <-  boxcox(lm(race_df_ROE$`Ratio Observed/Expected` ~ 1))
+b_ROE <-  boxcox(lm(race_df_ROE$`Ratio Observed/ Expected` ~ 1))
 lambda_ROE <- b_ROE$x[which.max(b_ROE$y)]
+lambda_ROE 
 ```
 
 We'll create a function to carry out the box cox transformation [cite](https://stats.stackexchange.com/questions/1444/how-should-i-transform-non-negative-data-including-zeros)
@@ -130,41 +131,68 @@ Successful transformation of death rate among of Black, Hispanic, and Multiple r
 Box Cox transformation of ROE and results of Shapiro test.
 ```{r}
 race_df_ROE %>%
-  mutate(BOX = box_cox(`Ratio Observed/Expected`, lambda_ROE)) %>%
-  ggplot() + geom_histogram(aes(x= BOX, fill = Race), bins = 10) + facet_wrap(. ~ Race)
+  mutate(BOX = box_cox(`Ratio Observed/ Expected`, lambda_ROE)) %>%
+  ggplot() +
+  geom_histogram(aes(x= BOX, fill = Race), bins = 10) +
+  facet_wrap(. ~ Race) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(x = "Box Cox Transformation of Observed/ Expected HIV Mortality Ratio", y = "Count")
 
+
+ggsave(here("results/box_hist.png"), units="in", width=10, height=7, dpi=300)
+```
+
+```{r}
 race_df_ROE <- race_df_ROE %>%
-  mutate(BOX = box_cox(`Ratio Observed/Expected`, lambda_ROE))
+  mutate(BOX = box_cox(`Ratio Observed/ Expected`, lambda_ROE))
 
 race_df_ROE %>%
   pull(BOX) %>% 
   shapiro.test()
+## Fail to reject normality
 
 race_df_ROE %>%
   filter(Race == "Black") %>% 
   pull(BOX) %>% 
   shapiro.test()
+## Fail to reject normality
 
 race_df_ROE %>%
   filter(Race == "White") %>% 
   pull(BOX) %>% 
   shapiro.test()
+## Reject normality
 
 race_df_ROE %>%
   filter(Race == "Hispanic") %>% 
   pull(BOX) %>% 
   shapiro.test()
+## Fail to reject normality
 
 race_df_ROE %>%
   filter(Race == "Multiple") %>% 
   pull(BOX) %>% 
-  shapiro.test()
+  shapiro.test() 
+## Fail to reject normality
 
 par(mfrow=c(1,3))
 plot(lm(race_df_ROE$BOX ~ 1))
+##I saved the plot above manually because I did not know how to save all three plots in one image aside from exporting.
 ```
 
-Let's save the dataframe for ROE since after the Box Cox transformation for all races was better with ROE than DR.
+The BOX transformation of ROE was better than that of DR, so let's use that one... but before wrapping up, let's go back and pull the observations that were dropped from the Box Cox transformation. 
 ```{r}
-saveRDS(race_df_ROE, here("data/processed_data/race_new.rds"))
+race_drop <- race_df %>% 
+  filter(`Ratio Observed/ Expected` == 0)
+
+race_new <- full_join(race_df_ROE, race_drop)
+
+##We need to replace the NA with a value in order to run spatial tests later. We will replace with 0. 
+race_new <-  race_new %>%
+  mutate(BOX = replace(BOX, is.na(BOX),0))
+```
+
+```{r}
+saveRDS(race_new, here("data/processed_data/race_new.rds"))
 ```

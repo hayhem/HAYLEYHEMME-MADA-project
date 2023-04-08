@@ -12,10 +12,6 @@ bibliography: ../dataanalysis_template_references.bib
 csl: ../apa.csl
 ---
 
-The structure below is one possible setup for a data analysis project (including the course project). For a manuscript, adjust as needed. You don't need to have exactly these sections, but the content covering those sections should be addressed.
-
-This uses MS Word as output format. [See here](https://quarto.org/docs/output-formats/ms-word.html) for more information. You can switch to other formats, like html or pdf. See [the Quarto documentation](https://quarto.org/) for other formats.
-
 ```{r, echo=FALSE, message=FALSE}
 # load a few R packages
 library(knitr)
@@ -34,6 +30,7 @@ library(here)
 
 # Introduction
 
+
 ## General Background Information
 
 *Provide enough background on your topic that others can understand the why and how of your analysis*
@@ -45,19 +42,18 @@ All data described was aggregated at the the state-level.
 
 ## Questions/Hypotheses to be addressed
 
-Question: Can the HIV death rate from 2020 in the United States be modeled by social determinants of health like poverty and/ or by HIV related outcomes (new diagnoses, prevalence PrEP use, etc?) Explain in separate analysis: Race/ ethnicity (Black, Hispanic, White, Multiple) and Sex (Male, Female). Can a spatial model explain variation in HIV death-rates at the state-level and/or regional-level after accounting for variables associated with sociodemographic, SDOH, and HIV-related outcomes?
+Question: Can the HIV death rate from 2020 in the United States be modeled by social determinants of health like poverty and/ or by HIV related outcomes (new diagnoses, prevalence PrEP use, etc?) Are these factors correlated with disparities in HIV-related mortality across different racial and ethnic groups? Can a spatial model explain variation in HIV death-rates at the state-level and/or regional-level after accounting for variables associated with sociodemographic, SDOH, and HIV-related outcomes?
 
 H0 : There is not a spatial correlation HIV-related deaths and SDOH or HIV-related outcomes.
+
 Ha : There is a spatial correlation between HIV-related deaths and SDOH or HIV-related outcomes.
 
-
-Examples of reproducible research projects can for instance be found in [@mckay2020; @mckay2020a]
 
 {{< pagebreak >}}
 
 # Methods
 
-*Describe your methods. That should describe the data, the cleaning processes, and the analysis approaches. You might want to provide a shorter description here and all the details in the supplement.*
+I used a number of different methods throughout the various stages of this analysis. To ensure that data importation was simple and reproducible, I used `library(here)`. The vast majority of data cleaning processes were achieved using functions within the `tidyverse`. Some of these processes included renaming, pivoting, selecting, and mutating variables. Additionally, most of the data visualization and maps were obtained using ggplot2, with a few exceptions being packages with functions that are not compatible with the `tidyverse` and simple model diagnostics that base R. During the data visualization process, it became apparent that the dependent variable would require transformation. Data transformation methods of increasing complexity were performed. Ultimately, a Box Cox transformation was able normalize out dependent variable. A small value was added to each observation to ensure that all were greater than 0. To help assess relationships between variables, I performed a correlation analysis, most using principle component analysis (PCA). Data analysis methods were performed in order of increasing complexity, beginning with simple linear regression, then Poisson regression, negative-binomial regression, and finally a conditional autoregessive model (CAR) to account for spatial dependence. Models were judged for goodness of fit using AIC.
 
 ## Data aquisition
 
@@ -65,9 +61,7 @@ Examples of reproducible research projects can for instance be found in [@mckay2
 
 ## Data import and cleaning
 
-*Write code that reads in the file and cleans it so it's ready for analysis. Since this will be fairly long code for most datasets, it might be a good idea to have it in one or several R scripts. If that is the case, explain here briefly what kind of cleaning/processing you do, and provide more details and well documented code somewhere (e.g. as supplement in a paper). All materials, including files that contain code, should be commented well so everyone can follow along.* Loading the datasets from 
-
-Clear the environment and start fresh.
+All data used in this analysis were obtained from publicly available sources, as note above.
 
 ```{r}
 
@@ -75,13 +69,14 @@ Clear the environment and start fresh.
 
 ## Statistical analysis
 
-Explore central tendency across demographic groups. Fit a poisson regression model predicting death-to-case ratio from percentage with x SDOH variables and percentage of x demographic group.
+Spatial dependence assessed using Moran's I. 
 
 {{< pagebreak >}}
 
 # Results
 
 ## Exploratory/Descriptive analysis
+
 
 *Use a combination of text/tables/figures to explore and describe your data. Show the most important descriptive results here. Additional ones should go in the supplement. Even more can be in the R and Quarto files that are part of your project.*
 

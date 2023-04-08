@@ -1,0 +1,14 @@
+---
+title: "Read Me"
+format: html
+editor: visual
+---
+
+This respository contains data and code to reproduce my research. Raw data is store in the `data` subfolder `raw_data`, while processed data produced by wrangling is stored under `processed_data`.
+
+Steps to reproduce this project are:
+
+1.  Open the R project `dataanalysis-template`
+2.  Open the folder code and start by running files in `processing_code`. The files are numbered sequentially, but `1_cleaning_2020` is the only file in this folder that must be run first. The others may be run in any order.
+3.  Open the folder code and start by running files in `analysis_code` , which contains sub-folders for running the analysis for race/ethnicity `race` and `sex` separately. `race` and `sex` may be run independently of each other, but contain numbers to indicate the order which these files should be run.
+4.  Data files produced by these files are store in the `data` subfolder `processed_data`

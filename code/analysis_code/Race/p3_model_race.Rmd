@@ -55,8 +55,9 @@ car_function <- function(race) {
   
   nablist_race_df <- mat2listw(h_race_df, style = "W")
   
-  car_race <- spautolm(log_rate ~ `Percent Living in Poverty` + 
-                             `Percent High School Education`,
+  car_race <- spautolm(`Death Cases` ~ `Median Household Income` +
+                              `Percent High School Education` + 
+                              offset(log(`Population`)),
                            data = df,
                            listw = nablist_race_df,
                            family = "CAR")
@@ -70,7 +71,19 @@ pois_function("Black")
 ```
 
 ```{r}
+sink(here("results/pois_summary_black.txt"))
+pois_function("Black")
+sink()
+```
+
+```{r}
 pois_function("Hispanic")
+```
+
+```{r}
+sink(here("results/pois_summary_hispanic.txt"))
+pois_function("Hispanic")
+sink()
 ```
 
 ```{r}
@@ -78,16 +91,39 @@ pois_function("Multiple")
 ```
 
 ```{r}
+sink(here("results/pois_summary_multiple.txt"))
+pois_function("Multiple")
+sink()
+```
+
+```{r}
 pois_function("White")
+```
+
+```{r}
+sink(here("results/pois_summary_white.txt"))
+pois_function("White")
+sink()
 ```
 
 Fitting Negative binomial models
 ```{r}
 nb_function("Black")
 ```
+```{r}
+sink(here("results/nb_summary_black.txt"))
+nb_function("Black")
+sink()
+```
+
 
 ```{r}
 nb_function("Hispanic")
+```
+```{r}
+sink(here("results/nb_summary_hispanic.txt"))
+nb_function("Hispanic")
+sink()
 ```
 
 ```{r}
@@ -95,9 +131,22 @@ nb_function("Multiple")
 ```
 
 ```{r}
+sink(here("results/nb_summary_multiple.txt"))
+nb_function("Multiple")
+sink()
+```
+
+```{r}
 nb_function("White")
 ```
-The NB model accounting for overdispersion fit better than the poisson model.
+
+```{r}
+sink(here("results/nb_summary_white.txt"))
+nb_function("White")
+sink()
+```
+
+The NB model accounting for overdispersion fits better than the poisson model.
 
 Fitting CAR models
 ```{r}
@@ -105,15 +154,37 @@ car_function("Black")
 ```
 
 ```{r}
+sink(here("results/car_summary_black.txt"))
+car_function("Black")
+sink()
+```
+
+```{r}
 car_function("Hispanic")
+```
+
+```{r}
+sink(here("results/car_summary_hispanic.txt"))
+car_function("Hispanic")
+sink()
 ```
 
 ```{r}
 car_function("Multiple")
 ```
+```{r}
+sink(here("results/car_summary_multiple.txt"))
+car_function("Multiple")
+sink()
+```
 
 ```{r}
 car_function("White")
+```
+```{r}
+sink(here("results/car_summary_white.txt"))
+car_function("White")
+sink()
 ```
 The model accounting for spatial variation provide the best fit.
 
@@ -130,12 +201,11 @@ spacy_function <- function(race) {
   nablist_race_df <- mat2listw(h_race_df, style = "W")
 
  # plot Moran's I
-  par(mfrow=c(1,2))
   print(moran.test(df$BOX, nablist_race_df, zero.policy = TRUE, randomisation = FALSE))
   moran.plot(df$BOX, nablist_race_df, zero.policy = TRUE)
   
   # calculate and print LISA statistics
-  lisa_race <- localmoran(df$`Ratio Observed/Expected`, nablist_race_df)
+  lisa_race <- localmoran(df$`Ratio Observed/ Expected`, nablist_race_df)
   summary(lisa_race[,1])
 }
 ```
@@ -145,7 +215,23 @@ spacy_function("Black")
 ```
 
 ```{r}
+png(here("results/moran_black.png"))
+sink(here("results/spacy_summary_black.txt"))
+spacy_function("Black")
+sink()
+dev.off()
+```
+
+```{r}
 spacy_function("Hispanic")
+```
+
+```{r}
+png(here("results/moran_hispanic.png"))
+sink(here("results/spacy_summary_hispanic.txt"))
+spacy_function("Hispanic")
+sink()
+dev.off()
 ```
 
 ```{r}
@@ -153,10 +239,25 @@ spacy_function("Multiple")
 ```
 
 ```{r}
+png(here("results/moran_multiple.png"))
+sink(here("results/spacy_summary_multiple.txt"))
+spacy_function("Multiple")
+sink()
+dev.off()
+```
+
+```{r}
 spacy_function("White")
 ```
 
+```{r}
+png(here("results/moran_white.png"))
+sink(here("results/spacy_summary_white.txt"))
+spacy_function("White")
+sink()
+dev.off()
+```
 
 ```{r}
-save.image(file="../../data/processed_data/race_env.rds")
+save.image(here("data/processed_data/race_env.rds"))
 ```

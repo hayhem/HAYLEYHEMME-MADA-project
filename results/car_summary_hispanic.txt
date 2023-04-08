@@ -1,0 +1,24 @@
+
+Call: 
+spautolm(formula = log_rate ~ `Percent Living in Poverty` + `Percent High School Education`, 
+    data = df, listw = nablist_race_df, family = "CAR")
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-1.89159 -0.48124  0.09146  0.47708  1.25082 
+
+Coefficients: 
+                                 Estimate Std. Error z value Pr(>|z|)
+(Intercept)                     12.301113   5.716339  2.1519  0.03140
+`Percent Living in Poverty`     -0.031629   0.055333 -0.5716  0.56758
+`Percent High School Education` -0.117082   0.058617 -1.9974  0.04578
+
+Lambda: 0.76928 LR test value: 6.0628 p-value: 0.013806 
+Numerical Hessian standard error of lambda: 0.46106 
+
+Log likelihood: -46.81638 
+ML residual variance (sigma squared): 0.3725, (sigma: 0.61033)
+Number of observations: 48 
+Number of parameters estimated: 5 
+AIC: 103.63
+
