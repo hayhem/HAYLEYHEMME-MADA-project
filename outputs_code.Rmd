@@ -1,0 +1,28 @@
+#Table
+library(kableExtra)
+```{r}
+df <- readRDS(here("data/processed_data/race_new.rds"))
+
+df %>% 
+  group_by(Race) %>% 
+  summarize(tot_deaths = sum(`Death Cases`),
+            tot_population = sum(`Population`),
+            overall_rate = round(tot_deaths/ tot_population *1e5,1)) %>% 
+  ungroup() %>% 
+  mutate(percent_by_race = round(tot_deaths/sum(tot_deaths)*100, 1),
+         ratio = round(overall_rate/overall_rate[Race =="White"],1)) %>%
+  kable(col.names = c("Race/ Ethnicity",
+                      "HIV-Related Deaths (n)",
+                      "Population \n (>12 years old)",
+                      "Death Rate \n (per 100,000)",
+                      "Percent",
+                      "Ratio"),
+        caption = "HIV-Related Deaths Summary by Race/ Ethncity, United States, 2020",
+        align = "c") %>%
+  kable_minimal() %>%
+  kable_styling(font_size = 50) %>% 
+  save_kable(here("results/test.png"))
+# using white persons as reference group
+```
+
+

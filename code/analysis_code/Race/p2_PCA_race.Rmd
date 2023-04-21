@@ -2,69 +2,69 @@
 library(ggcorrplot)
 library(FactoMineR)
 library(factoextra)
-library(spatialreg)
-library(MASS)
 library(here)
+library(knitr)
 library(tidyverse)
+library(broom)
 
 df <- readRDS(here("data/processed_data/race_new.rds"))
 ```
 
-CREATING PCA FUNCTION
+PCA
 ```{r}
-pca_function <- function(race) {   
-  # filter race_df by the selected race/ethnicity
-  df <- df[df$Race == race,] 
+df <- df %>%
+    select_if(~ !any(is.na(.))) 
+  
+  #separating the y variables
+df_response <- df %>%
+    select(contains(c("State", "Race", "Death", "Population", "BOX", "YJ", "Ratio", "outcome_DR"))) 
+  
+  # separating x variables and scaling
+df_predictor <- df %>% 
+    select(contains(c("State", "Race", "Percent", "Gini", "Median", "Broadband"))) %>% 
+    #select(!contains(c("Virally", "Received", "Late"))) %>% 
+    mutate(across(where(is.numeric), scale))
 
-#Selecting variables
-num_race <- df[,c(9:10, 16:25)]
+#Setting up correlation matrix
+corr_matrix <- df_predictor %>% 
+    select(where(is.numeric)) %>% 
+    cor()
 
-#normalization
-norm_race <- scale(num_race)
-print(head(norm_race))
+  #setting up correlation matrix 
+print(ggcorrplot(corr_matrix))
+ggsave(here("results/corr_mat.png"), units="in", width=10, height=7, dpi=300)
+```
 
-#setting up correlation matrix
-corr_matrix_race <- cor(norm_race)
-print(ggcorrplot(corr_matrix_race))
-
+```{r}
 #applying pca
-pca_race <- princomp(corr_matrix_race)
-print(summary(pca_race))
-#pca loadings
-print(pca_race$loadings[, 1:2])
+pca <- princomp(corr_matrix)
+print(summary(pca))
+
+#pca loadings of principal components 1 and 2
+print(pca$loadings[, 1:2])
 
 #Scree plot
-print(fviz_eig(pca_race, addlabels = TRUE))
-# Biplot of the attributes
-print(fviz_pca_var(pca_race, col.var = "darkblue"))
+print(fviz_eig(pca, addlabels = TRUE))
+ggsave(here("results/scree_plot.png"), units="in", width=10, height=7, dpi=300)
+```
+Since we originally had 11 variables, we should only look at components that explain more than 9.1% of variation. We can see from the scree plot that principal component 1 explained 63.8% of variation, and components 1 and 2 explained 84.7% of the variation, and components 1 - 3 explained 94.8%. Component 3 just  barely passed the threshold with 10.1%. All other principal components explains less that 6.2% of variation, so they will excluded. 
 
+```{r}
 #Contribution of each variable 
-print(fviz_cos2(pca_race, choice = "var", axes = 1:2))
+print(fviz_cos2(pca, choice = "var", axes = 1:2))
 
 # Biplot of the attributes
-print(fviz_pca_var(pca_race, col.var = "cos2",
-             gradient.cols = c("darkblue", "orange", "green"),
-             repel = TRUE, title = race))
+print(fviz_pca_var(pca, col.var = "cos2",
+                   gradient.cols = c("darkblue", "orange", "green"),
+                   repel = TRUE, title = "PCA"
+                   ))
 # Variables in green are a good representation of the variable on that component.
-}
+
+#Creating object to store scaled dataframes
+df_scaled <- full_join(df_response, df_predictor, by = join_by("State", "State Abbreviation", "States with HIV-Specific Criminal Laws/Statutes", "States That Have Prosecuted PLWH", "Race"))
 ```
 
-```{r}
-pca_function("Black")
-ggsave(here("results/pca_black.png"), units="in", width=10, height=7, dpi=300)
-```
 
 ```{r}
-pca_function("Hispanic")
-ggsave(here("results/pca_hispanic.png"), units="in", width=10, height=7, dpi=300)
-```
-
-```{r}
-pca_function("Multiple")
-ggsave(here("results/pca_multiple.png"), units="in", width=10, height=7, dpi=300)
-```
-
-```{r}
-pca_function("White")
-ggsave(here("results/pca_white.png"), units="in", width=10, height=7, dpi=300)
+saveRDS(df_scaled, here("data/processed_data/df_scaled.rds"))
 ```

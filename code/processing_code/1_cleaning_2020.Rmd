@@ -14,7 +14,7 @@ Load the files to be cleaned.
 ```{r}
 deaths <- read_xlsx(here("data/raw_data/AIDSVu_State_Death_2020.xlsx"), skip = 3)
 us_race_pop <- read_xlsx(here("data/raw_data/DECENNIALPL2020.P2-2023-02-24T124235.xlsx"), sheet = 2)
-us_sex_pop <-read_csv(here("data/raw_data/raw_data.csv"), skip = 2) 
+us_sex_pop <-read_csv(here("data/raw_data/raw_data.csv"), skip = 2) # not used in this analysis
 kid_pop <- read_xlsx(here("data/raw_data/Child population by age group.xlsx"))
 kid_race <- read_xlsx(here("data/raw_data/Child population by race and ethnicity.xlsx"))
 
@@ -24,6 +24,7 @@ prev  <- read_xlsx(here("data/raw_data/AIDSVu_State_Prev_2020.xlsx"), skip = 3)
 rec_care  <- read_xlsx(here("data/raw_data/AIDSVu_State_ReceiptofCare_2020.xlsx"), skip = 3)
 sdoh  <- read_xlsx(here("data/raw_data/AIDSVu_State_SDOH_2020.xlsx"), skip = 3)
 v_sup  <- read_xlsx(here("data/raw_data/AIDSVu_State_ViralSuppression_2020.xlsx"), skip = 3)
+internet <- read_xlsx(here("data/raw_data/ACSST5Y2020.S2801-2023-04-17T232857.xlsx"), skip = 3, sheet = 2)
 ```
 
 Let's start by separating `deaths` by demographic characteristic . While this data provides information on demographic characteristics such as sex, age group, and race/ethnicity, it does not provide data on all of these terms together. We'll separating by sex and race/ethnicity. This analysis will be limited to Non-Hispanic Black, Non-Hispanic White, Hispanic persons, and persons of Multiple racial backgrounds.
@@ -234,7 +235,7 @@ race_df <- full_join(race_df, prev_race)
 ```
 
 
-Some quick cleaning of the social determinant sof health file, and merging this with our two results dataframes `sex_df` and `race_df`.
+Some quick cleaning of the social determinants of health file, and merging this with our two results dataframes `sex_df` and `race_df`.
 ```{r}
 sdoh <- sdoh %>% 
   filter(!grepl("DC", `State Abbreviation`)) %>% 
@@ -245,12 +246,46 @@ sex_df <- full_join(sex_df, sdoh)
 race_df <- full_join(race_df,sdoh)
 ```
 
+```{r}
+internet <- internet %>% 
+  select(c(1, "Broadband of any type")) %>% 
+  slice(c(-1:-7, -48:-52,-263:-267)) %>% 
+  filter(!grepl(",", `Broadband of any type`))
+```
+
+This dataframe has some issues. Let's fill in the state names...
+```{r}
+# create a vector of state names
+states <- state.name
+
+# repeat each state name five times
+states <- states %>%
+  rep(each = 4)
+
+# sort the repeated state names in alphabetical order
+states <- sort(states)
+
+# print the resulting vector
+states
+
+internet$State<- states 
+
+internet <- internet %>% 
+  select(State, `Broadband of any type`) %>% 
+  drop_na()
+
+internet$`Broadband of any type` <- gsub("%", "", internet$`Broadband of any type`) 
+
+internet <- internet %>% mutate(`Broadband of any type` = as.numeric(`Broadband of any type`))
+```
+
+```{r}
+race_df <- full_join(race_df, internet)
+sex_df <- full_join(sex_df, internet)
+```
+
 We have some more cleaning to, but let's save these files for now. 
 ```{r}
 saveRDS(sex_df, here("data/processed_data/sex_df.rds"))
 saveRDS(race_df, here("data/processed_data/race_df.rds"))
-```
-
-```{r}
-rm(deaths, df_pop, kid_pop, pop_sex, pop_less13, us_sex_pop, us_race_pop, new_pop, deaths_sex, race_pop, kid_race, total_pop, deaths_race, late_dx, new_dx, sex_dx, prev, prev_sex, prev_race, v_sup, rec_care, sdoh)
 ```
