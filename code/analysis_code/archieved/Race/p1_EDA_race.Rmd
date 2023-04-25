@@ -1,0 +1,327 @@
+```{r message=FALSE, warning=FALSE}
+library(here)
+library(spdep)
+library(GGally)
+library(skimr)
+library(ggfortify)
+library(MASS)
+library(ggcorrplot)
+library("FactoMineR")
+library(tidyverse)
+library(broom)
+library(knitr)
+library(ggpubr)
+```
+https://github.com/ubikuity/List-of-neighboring-states-for-each-US-state
+List-of-neighboring-states-for-each-US-state
+```{r}
+race_df <- readRDS(here("data/processed_data/race_df_cleaned.rds"))
+us_nabs <- readRDS(here("data/processed_data/us_nabs.rds"))
+
+#Subsetting to only contiguous states.
+race_df <- race_df %>%
+  filter(!grepl("Alaska", State),
+         !grepl("Hawaii", State))
+
+us_nabs <- us_nabs %>%
+  filter(!grepl("AK", StateCode),
+         !grepl("HI", StateCode), 
+         !grepl("DC", StateCode))
+```
+
+Let's start by looking at the overall HIV-related death rate by race in the United States.
+```{r}
+race_df %>% 
+  group_by(Race) %>% 
+  summarize(tot_deaths = sum(`Death Cases`),
+            tot_population = sum(`Population`),
+            overall_rate = round(tot_deaths/ tot_population *1e5,1)) %>% 
+  ungroup() %>% 
+  mutate(percent_by_race = round(tot_deaths/sum(tot_deaths)*100, 1),
+         ratio = round(overall_rate/overall_rate[Race =="White"],1)) %>%
+  kable(col.names = c("Race/ Ethnicity",
+                      "HIV-Related Deaths (n)",
+                      "Population (>12 years old)",
+                      "Death Rate (per 100,000)",
+                      "Percent",
+                      "Ratio"))
+# using white persons as reference group
+
+
+```
+
+
+We can seen that Black persons accounts for the 43.5% of HIV-related deaths in United States, and the rate of HIV-related deaths among this population was 7.2 times high than the rate of HIV-related deaths among White persons.
+
+Next, let's take a look at our response variable
+Univariate Analysis
+
+Let's take a look at some box plots of death rate by races and state. 
+We'll start by looking at death rate given by the AIDSVu dataset. 
+```{r}
+race_df %>% 
+  ggplot() +
+  geom_boxplot(aes(y = `Death Rate (AIDSVu)`, x = Race)) + 
+  labs(title = "HIV-Related Death Rate (AIDSVu) by Race/ Ethnicity, United States, 2020", y = "Rate (per 100,000)", x = "Race/ Ethnicity") + theme(legend.position = "none")
+```
+It seems like something might be strange about the death rates for persons of multiple races. Let's compare to the death rate that we estimated.
+
+```{r}
+race_df %>% 
+  ggplot() +
+  geom_boxplot(aes(y = `Death Rate (estimated)`, x = Race)) + 
+  labs(title = "HIV-Related Death Rate (calculated) by Race/ Ethnicity, United States, 2020", y = "Rate (per 100,000)", x = "Race/ Ethnicity") + theme(legend.position = "none")
+```
+The plots differ drastically for persons of multiple race. It is difficult to tell what might have caused this drastic change, but my intuition tells me there is something strange going on.
+
+Unfortunately, for the sake of this analysis I believe it might be best to remove persons of multiple race/ ethnicities. 
+```{r}
+race_df <- race_df %>% 
+  filter(Race != "Multiple")
+```
+
+```{r}
+race_df %>% 
+  ggplot() +
+  geom_boxplot(aes(y = `Death Rate (AIDSVu)`, x = Race)) + 
+  labs(title = "HIV-Related Death Rate (AIDSVu) by Race/ Ethnicity, United States, 2020", y = "Rate (per 100,000)", x = "Race/ Ethnicity") + theme(legend.position = "none")
+
+race_df %>% 
+  ggplot() +
+  geom_boxplot(aes(y = `Death Rate (estimated)`, x = Race)) + 
+  labs(title = "HIV-Related Death Rate (calculated) by Race/ Ethnicity, United States, 2020", y = "Rate (per 100,000)", x = "Race/ Ethnicity") +
+  theme(legend.position = "none")
+
+ggsave(here("results/dr_boxplot.png"), units="in", width=10, height=7, dpi=300)
+```
+These plots are quite similar, so I feel good about using the counts and population data in our later analyses.
+
+Let's take a look at the distribution of HIV-related death rate. For the sake of comparison, we will use the estimated HIV death rate as our response variable. 
+```{r}
+race_df %>% 
+  ggplot() +
+  geom_histogram(aes(x = `Death Rate (estimated)`, group = Race), bins = 10) +
+  facet_grid(. ~ Race) + 
+  theme(legend.position = "none") +
+  labs(title = "Histogram of Raw Death Rate (estimated)", y = "n", x = "Rate (per 100,000)")
+ggsave(here("results/dr_hist.png"), units="in", width=10, height=7, dpi=300)
+```
+The distribution for Hispanic and White persons is definitely not normally distributed. The distribution for Black persons seems to be roughly normal. Let's subset to test.
+
+```{r}
+black_df <- race_df %>% 
+  filter(Race == "Black")
+
+hispanic_df <- race_df %>% 
+  filter(Race == "Hispanic")
+
+white_df <- race_df %>% 
+  filter(Race == "White")
+``` 
+
+```{r}
+shapiro.test(black_df$`Death Rate (estimated)`)
+```
+We fail to reject normality. No transformation of death rate for Black persons is needed.
+
+```{r}
+shapiro.test(hispanic_df$`Death Rate (estimated)`)
+# reject normality,
+
+#let's try some transformations
+shapiro.test(log(hispanic_df$`Death Rate (estimated)` + 1))
+
+hispanic_df  <- hispanic_df %>% 
+  mutate(`Death Rate (log transformed)` = log(`Death Rate (estimated)` + 1))
+```
+Log transformation was able to normalize the death rate distribution for Hispanic persons.
+
+Moving on to the transformation for the death rate of White persons.
+```{r}
+shapiro.test(log(white_df$`Death Rate (estimated)` + 1))
+```
+Log transformation was not sufficient. We will have to try a more powerful transformation method.
+
+Let's try a Box Cox transformation. Box Cox requires variables to be greater than 0, so we'll have to subset our dataframe to proceed with this analysis. We will have to add these observations back later. 
+```{r}
+b_DR <-  boxcox(lm(white_df$`Death Rate (estimated)` ~ 1))
+
+lambda_DR <- b_DR$x[which.max(b_DR$y)] #pulling lambda
+```
+
+We'll create a function to carry out the box cox transformation [cite](https://stats.stackexchange.com/questions/1444/how-should-i-transform-non-negative-data-including-zeros)
+```{r}
+box_cox <- function(x, lambda) {
+
+    eps <- 0.00001
+    if (abs(lambda) < eps)
+        log(x)
+    else
+        (x ^ lambda - 1) / lambda
+
+}
+```
+
+Box Cox transformation of DR and results of shapiro test.
+```{r}
+white_df <- white_df %>%
+  mutate(`Death Rate (BOX transformed)` = box_cox(`Death Rate (estimated)`, lambda_DR))
+  
+white_df %>% 
+  pull(`Death Rate (BOX transformed)`) %>% 
+  shapiro.test()
+```
+There is still sufficient efficient to reject normality. Let's see if a more powerful transformation works...
+
+We'll try a Yeo-Johnson transformation.
+```{r}
+yeo_johnson <- function(x, lambda) {
+
+    eps <- .000001
+    not_neg <- which(x >= 0)
+    is_neg  <- which(x < 0)
+
+    not_neg_trans <- function(x, lambda) {
+        if (abs(lambda) < eps) log(x + 1)
+        else ((x + 1) ^ lambda - 1) / lambda
+    }
+
+    neg_trans <- function(x, lambda) {
+        if (abs(lambda - 2) < eps) - log(-x + 1)
+        else - ((-x + 1) ^ (2 - lambda) - 1) / (2 - lambda)
+    }
+
+    x[not_neg] <- not_neg_trans(x[not_neg], lambda)
+
+    x[is_neg] <- neg_trans(x[is_neg], lambda)
+
+    return(x)
+
+}
+
+```
+
+```{r}
+white_df <- white_df %>%
+  mutate(`Death Rate (YJ transformed)` = yeo_johnson(`Death Rate (estimated)`, lambda_DR))
+
+white_df %>% 
+  pull(`Death Rate (YJ transformed)`) %>% 
+  shapiro.test()
+```
+Still unable to normalize. We will have to utilize methods that are not sensitive to non-normal distributions for White persons.
+
+```{r}
+df <- list(black_df, hispanic_df, white_df)
+
+df <- reduce(df, full_join)
+
+df <- df %>% 
+  mutate(outcome_DR = case_when(
+    Race == "Black" ~ `Death Rate (estimated)`,
+    Race == "White" ~ `Death Rate (estimated)`,
+    Race == "Hispanic" ~ `Death Rate (log transformed)`
+  ))
+```
+
+Let's move on to
+Bivariate Analysis
+```{r}
+ggplot(df, aes(y = outcome_DR, x = `Percent Living in Poverty`)) +
+  geom_smooth(method = "lm") + 
+  geom_point() + 
+  labs(title = "HIV Death Rate vs. Percent Living in Poverty") + 
+  stat_cor(method = "pearson") +
+  facet_wrap(Race ~ . , scales = "free_y")
+ggsave(here("results/bi_pov.png"), units="in", width=10, height=7, dpi=300)
+#did not "pass"
+       
+ggplot(df, aes(y = outcome_DR, x = `Percent Unemployed`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "HIV Death Rate vs. Percent Unemployed") + 
+  stat_cor(method = "pearson") +
+  facet_wrap(Race ~ . , scales = "free_y")
+ggsave(here("results/bi_unemployed.png"), units="in", width=10, height=7, dpi=300)
+#"passed"
+
+ggplot(df, aes(y = outcome_DR, x = `Gini Coefficient`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "HIV Death Rate vs. Gini Coefficient") +
+  facet_wrap(Race ~ . , scales = "free_y") + 
+  stat_cor(method="pearson") 
+ggsave(here("results/bi_gini.png"), units="in", width=10, height=7, dpi=300)
+#"passed"
+
+ggplot(df, aes(y = outcome_DR, x = `Percent Less than High School Education`)) +
+  geom_smooth(method = "lm") + 
+  geom_point() + 
+  labs(title = "HIV Death Rate vs. Percent Less than High School Education") +
+  facet_wrap(Race ~ . , scales = "free_y") +
+  stat_cor(method="pearson")
+ggsave(here("results/bi_ed.png"), units="in", width=10, height=7, dpi=300)
+#"passed"
+       
+ggplot(df, aes(y = outcome_DR, x = `Percent Living with Severe Housing Cost Burden`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "HIV Death Rate  vs. Percent Living with Severe Housing Cost Burden") +
+  facet_wrap(Race ~ . , scales = "free_y")+ 
+  stat_cor(method="pearson")
+#"passed"
+ggsave(here("results/bi_housing.png"), units="in", width=10, height=7, dpi=300)
+
+ggplot(df, aes(y = outcome_DR, x = `Percent Without an Internet subscription`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "HIV Death Rate vs. Percent Without an Internet Subscription") +
+  facet_wrap(Race ~ . , scales = "free_y") + 
+  stat_cor(method="pearson")
+# did not "pass"
+```
+
+```{r}
+ggplot(df, aes(y = outcome_DR, x = `Percent Uninsured Under 65 Years Old`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "HIV Death Rate vs. Percent Uninsured Under 65 Years Old") +
+  facet_wrap(Race ~ . , scales = "free_y") + 
+  stat_cor(method="pearson")
+# did not "pass"
+
+ggplot(df, aes(y = outcome_DR, x = `Percent Living with Food Insecurity`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "HIV Death Rate vs. Percent Living with Food Insecurity") +
+  facet_wrap(Race ~ . , scales = "free_y") + 
+  stat_cor(method="pearson")
+# did not "pass"
+
+ggplot(df, aes(y = outcome_DR, x = `Median Household Income`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "HIV Death Rate vs. Median Household Income") +
+  facet_wrap(Race ~ . , scales = "free_y") + 
+  stat_cor(method="pearson")
+# did not "pass"
+
+ggplot(df, aes(y = outcome_DR, x = `Percentage Diagnosed Late`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "HIV Death Rate vs. Percentage Diagnosed Late") +
+  facet_wrap(Race ~ . , scales = "free_y") + 
+  stat_cor(method="pearson")
+
+ggplot(df, aes(y = outcome_DR, x = `Percentage Virally Suppressed`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "HIV Death Rate vs. Percentage Virally Suppressed") +
+  facet_wrap(Race ~ . , scales = "free_y") + 
+  stat_cor(method="pearson")
+```
+Now that we have an idea of the relationship between our outcome and potential predictors, next I need to account for the fact that these variables a likely have some degree of multicollinearity. In the next step we will be using PCA to scale our predictors. 
+
+```{r}
+saveRDS(df, here("data/processed_data/race_new.rds"))
+```

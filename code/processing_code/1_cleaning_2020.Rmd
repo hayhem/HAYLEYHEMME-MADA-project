@@ -24,7 +24,7 @@ prev  <- read_xlsx(here("data/raw_data/AIDSVu_State_Prev_2020.xlsx"), skip = 3)
 rec_care  <- read_xlsx(here("data/raw_data/AIDSVu_State_ReceiptofCare_2020.xlsx"), skip = 3)
 sdoh  <- read_xlsx(here("data/raw_data/AIDSVu_State_SDOH_2020.xlsx"), skip = 3)
 v_sup  <- read_xlsx(here("data/raw_data/AIDSVu_State_ViralSuppression_2020.xlsx"), skip = 3)
-internet <- read_xlsx(here("data/raw_data/ACSST5Y2020.S2801-2023-04-17T232857.xlsx"), skip = 3, sheet = 2)
+internet <- read_xlsx(here("data/raw_data/ACSST5Y2020.S2801-2023-04-17T232857.xlsx"), skip = 2, sheet = 2)
 ```
 
 Let's start by separating `deaths` by demographic characteristic . While this data provides information on demographic characteristics such as sex, age group, and race/ethnicity, it does not provide data on all of these terms together. We'll separating by sex and race/ethnicity. This analysis will be limited to Non-Hispanic Black, Non-Hispanic White, Hispanic persons, and persons of Multiple racial backgrounds.
@@ -221,7 +221,7 @@ Cleaning Prevalence file
 ```{r}
 prev <- prev %>% 
   filter(!grepl("DC", `State Abbreviation`)) %>%
-  filter(!grepl("PR", `State Abbreviation`))
+  filter(!grepl("PR", `State Abbreviation`)) 
 
 prev_sex <- prev %>%
   select(1:4, contains("male"), -contains("and"), -ends_with("Stability")) 
@@ -239,7 +239,8 @@ Some quick cleaning of the social determinants of health file, and merging this 
 ```{r}
 sdoh <- sdoh %>% 
   filter(!grepl("DC", `State Abbreviation`)) %>% 
-   filter(!grepl("PR", `State Abbreviation`))
+   filter(!grepl("PR", `State Abbreviation`)) %>% 
+  mutate("Percent Less than High School Education" = 100 - `Percent High School Education`)
 
 sex_df <- full_join(sex_df, sdoh)
 
@@ -247,10 +248,11 @@ race_df <- full_join(race_df,sdoh)
 ```
 
 ```{r}
-internet <- internet %>% 
-  select(c(1, "Broadband of any type")) %>% 
-  slice(c(-1:-7, -48:-52,-263:-267)) %>% 
-  filter(!grepl(",", `Broadband of any type`))
+no_internet <- internet %>% 
+  select(c(1, "Without an Internet subscription")) %>% 
+  slice(c(-1:-8, -48:-52,-263:-267)) %>% 
+  filter(!grepl(",", `Without an Internet subscription`)) %>% 
+  rename(`Percent Without an Internet subscription` = `Without an Internet subscription`)
 ```
 
 This dataframe has some issues. Let's fill in the state names...
@@ -265,23 +267,21 @@ states <- states %>%
 # sort the repeated state names in alphabetical order
 states <- sort(states)
 
-# print the resulting vector
-states
+no_internet$State<- states 
 
-internet$State<- states 
-
-internet <- internet %>% 
-  select(State, `Broadband of any type`) %>% 
+no_internet <- no_internet %>% 
+  select(State, `Percent Without an Internet subscription`) %>% 
   drop_na()
 
-internet$`Broadband of any type` <- gsub("%", "", internet$`Broadband of any type`) 
+no_internet$`Percent Without an Internet subscription` <- gsub("%", "", no_internet$`Percent Without an Internet subscription`) 
 
-internet <- internet %>% mutate(`Broadband of any type` = as.numeric(`Broadband of any type`))
+no_internet <- no_internet %>%
+  mutate(`Percent Without an Internet subscription` = as.numeric(`Percent Without an Internet subscription`))
 ```
 
 ```{r}
-race_df <- full_join(race_df, internet)
-sex_df <- full_join(sex_df, internet)
+race_df <- full_join(race_df, no_internet)
+sex_df <- full_join(sex_df, no_internet)
 ```
 
 We have some more cleaning to, but let's save these files for now. 

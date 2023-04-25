@@ -1,0 +1,99 @@
+```{r, echo=FALSE, message=FALSE}
+library(knitr)
+library(tidyverse)
+library(here)
+```
+
+```{r}
+race_df <- readRDS(here("data/processed_data/race_df.rds"))
+race_df <-  race_df %>%  replace(is.na("Black Death Cases"), 0) %>% 
+   replace(is.na("White Death Cases"), 0) 
+
+```
+Let's find the HIV death rate by race
+```{r}
+race_df <- race_df %>% 
+  mutate(black_death_rate = round(`Black Death Cases`/Black_pop*1e5,1),
+         white_death_rate = round(`White Death Cases`/White_pop*1e5,1))
+```
+
+Next, let's find the expected number of HIV deaths. First, we'll calculate lambda. 
+```{r}
+lambda_black <- race_df %>%
+  drop_na(`Black Death Cases`) %>% 
+  summarize(lambda_black = sum(`Black Death Cases`)/sum(Black_pop)) %>%
+  as.numeric()
+
+lambda_white <- race_df %>%
+  drop_na(`White Death Cases`) %>% 
+  summarize(lambda_white = sum(`White Death Cases`)/sum(White_pop)) %>%
+  as.numeric()
+```
+
+NOTE: I realized after running some more analyses that calculating lambda for each race is masking disparities in HIV-related deaths between races. I believe it would more appropriate calculate a single value lambda for entire population. 
+
+```{r}
+black_df <- race_df %>% select(1:3, contains("Black"), 50:66) 
+
+black_df <- black_df %>% 
+  select(!contains("white")) %>% 
+ rename("Death Rate (AIDSVu)" = `Black Death Rate`,
+        "Population" = Black_pop,
+        "Death Cases" = "Black Death Cases",
+        "New Diagnoses Rate" = "New Diagnoses Black Rate",
+        "New Diagnoses Cases" = "New Diagnoses Black Cases",
+        "Percentage Diagnosed Late" = `Percent of Black Persons Diagnosed Late`,
+        "Number of Persons Diagnosed Late" = `Number of Black Persons Diagnosed Late`,
+        "Percentage Received Care" = `Percent of Black Persons Living with HIV who Received HIV Care`,
+        "Percentage Virally Suppressed" = `Percent of Black Persons Living with HIV who were Virally Suppressed`,
+        "HIV Prevalence Rate" = "Black Rate",
+        "Prevalent HIV Cases" = "Black Cases",
+        "Death Rate (estimated)" = black_death_rate) %>% 
+  mutate(Race = "Black",
+        "Expected Death Cases" = round(lambda_black * Population)) 
+
+white_df <- race_df %>% select(1:3, contains("White"), 50:66) 
+
+white_df <- white_df %>% 
+  select(!contains("black")) %>% 
+ rename("Death Rate (AIDSVu)" = `White Death Rate`,
+        "Population" = White_pop,
+        "Death Cases" = "White Death Cases",
+        "New Diagnoses Rate" = "New Diagnoses White Rate",
+        "New Diagnoses Cases" = "New Diagnoses White Cases",
+        "Percentage Diagnosed Late" = `Percent of White Persons Diagnosed Late`,
+        "Number of Persons Diagnosed Late" = `Number of White Persons Diagnosed Late`,
+        "Percentage Received Care" = `Percent of White Persons Living with HIV who Received HIV Care`,
+        "Percentage Virally Suppressed" = `Percent of White Persons Living with HIV who were Virally Suppressed`,
+        "HIV Prevalence Rate" = "White Rate",
+        "Prevalent HIV Cases" = "White Cases",
+        "Death Rate (estimated)" = white_death_rate) %>% 
+  mutate(Race = "White",
+        "Expected Death Cases" = round(lambda_white * Population)) 
+
+
+race_df <- list(black_df, white_df)
+
+race_df <- reduce(race_df, full_join)
+
+race_df <- race_df %>% 
+  mutate(`Percent HIV Prevalence` = round(`Prevalent HIV Cases`/ `Population`*100,2))
+```
+
+Now, let's calculate lambda - null, which would assume that there were no difference in Expected deaths by race.
+```{r}
+lambda <- race_df %>%
+  drop_na("Death Cases") %>% 
+  summarize(lambda = sum(`Death Cases`)/sum(Population)) %>%
+  as.numeric()
+
+race_df <- race_df %>% 
+  mutate(`Expected Death Cases (Null)` = Population * lambda,
+         `Ratio Observed/ Expected (Null)` = `Death Cases`/`Expected Death Cases (Null)`,
+         `Ratio Observed/ Expected (Race)` = `Death Cases`/`Expected Death Cases`)
+```
+
+Save the file and now we can move on to some exploratory analysis!
+```{r}
+saveRDS(race_df, here("data/processed_data/race_df_alt.rds"))
+```

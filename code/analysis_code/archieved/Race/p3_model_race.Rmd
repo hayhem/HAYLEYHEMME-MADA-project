@@ -1,0 +1,405 @@
+```{r message=FALSE, warning=FALSE}
+library(here)
+library(MASS)
+library(spatialreg)
+library(spdep)
+library(tidyverse)
+```
+
+```{r}
+df <- readRDS(here("data/processed_data/df_scaled.rds"))
+us_nabs <- readRDS(here("data/processed_data/us_nabs.rds"))
+
+#Subset to contiguous states
+us_nabs <- us_nabs %>%
+  filter(!grepl("AK", StateCode),
+         !grepl("HI", StateCode), 
+         !grepl("DC", StateCode))
+
+df <- df %>% 
+  filter(!grepl("Alaska", State),
+         !grepl("Hawaii", State))
+```
+
+```{r}
+states <- data.frame(state.name)
+states$region <- case_when(
+  states$state.name %in% c("Connecticut", "Maine", "Massachusetts", "New Hampshire", "Rhode Island", "Vermont", "New Jersey", "New York", "Pennsylvania") ~ "Northeast",
+  states$state.name %in% c("Illinois", "Indiana", "Iowa", "Kansas", "Michigan", "Minnesota", "Missouri", "Nebraska", "North Dakota", "Ohio", "South Dakota", "Wisconsin") ~ "Midwest",
+  states$state.name %in% c("Alabama", "Arkansas", "Delaware", "Florida", "Georgia", "Kentucky", "Louisiana", "Maryland", "Mississippi", "North Carolina", "Oklahoma", "South Carolina", "Tennessee", "Texas", "Virginia", "West Virginia") ~ "South",
+  states$state.name %in% c("Arizona", "California", "Colorado", "Idaho", "Montana", "Nevada", "New Mexico", "Oregon", "Utah", "Washington", "Wyoming") ~ "West"
+)
+
+df <- full_join(df, states, by = join_by(State == state.name))
+```
+
+subset by race/ethnicity
+```{r}
+black_df <- df %>% 
+  filter(Race == "Black")
+
+hispanic_df <- df %>% 
+  filter(Race == "Hispanic")
+
+white_df <- df %>% 
+  filter(Race == "White")
+```
+
+Setting up functions for models
+```{r}
+ #multiple linear regression
+mult_function <- function(df) {
+  mult_race <- glm(outcome_DR ~ 
+                        `Gini Coefficient` + # estimate income inequality
+                        `Percent Unemployed` +
+                        `Percent Less than High School Education` +  #estimate education access
+                        `Percent HIV Prevalence` +
+                        `Percent Living with Severe Housing Cost Burden`, #economic stability,
+                     data = df,
+                     family = "gaussian")
+  print(summary(mult_race))
+    ##pull fitted values
+df$mult_fit <- mult_race$fitted.values
+return(df)
+}
+
+## function to fit GLM and pull AIC
+mult_aic <- function(df) {
+  mult_race <- glm(outcome_DR ~ 
+                        `Gini Coefficient` + # estimate income inequality
+                        `Percent Unemployed` +
+                        `Percent Less than High School Education` +  #estimate education access
+                        `Percent HIV Prevalence` +
+                        `Percent Living with Severe Housing Cost Burden`, #economic stability,
+                     data = df,
+                     family = "gaussian")
+aic <- AIC(mult_race)
+
+return(aic)
+}
+```
+
+```{r}
+  #poisson
+pois_function <- function(df) {
+  pois_race <- glm(`Death Cases`~ 
+                        `Gini Coefficient` + # estimate income inequality
+                        `Percent Unemployed` +
+                        `Percent Less than High School Education` +  #estimate education access
+                        `Percent HIV Prevalence` +
+                        `Percent Living with Severe Housing Cost Burden` + #economic stability
+                    offset(log(`Population`)),
+                     data = df,
+                     family = "poisson")
+  print(summary(pois_race))
+  
+      ##pull fitted values
+df$pois_fit <- pois_race$fitted.values
+return(df)
+}
+
+## function to fit GLM and pull AIC
+pois_aic <- function(df) {
+  pois_race <- glm(`Death Cases`~ 
+                         `Gini Coefficient` + # estimate income inequality
+                         `Percent Unemployed` +
+                         `Percent Less than High School Education` +  #estimate education access
+                        `Percent HIV Prevalence` +
+                        `Percent Living with Severe Housing Cost Burden` + #economic stability
+                    offset(log(`Population`)),
+                     data = df,
+                     family = "poisson")
+aic <- AIC(pois_race)
+return(aic)
+}
+```
+
+
+```{r}
+  #Negative binomial
+nb_function  <- function(df) {
+  neg_bin_race <- glm.nb(`Death Cases` ~ 
+                        `Gini Coefficient` + # estimate income inequality
+                         `Percent Unemployed` +
+                        `Percent Less than High School Education` +  #estimate education access
+                        `Percent HIV Prevalence` +
+                        `Percent Living with Severe Housing Cost Burden` + #economic stability
+                     offset(log(`Population`)),
+                            data = df)
+  print(summary(neg_bin_race))
+  
+      ##pull fitted values
+df$nb_fit <- neg_bin_race$fitted.values
+
+return(df)
+
+}
+
+## function to fit GLM and pull AIC
+nb_aic <- function(df) {
+  neg_bin_race <- glm.nb(`Death Cases` ~ 
+                        `Gini Coefficient` + # estimate income inequality
+                        `Percent Unemployed` +
+                        `Percent Less than High School Education` +  #estimate education access
+                        `Percent HIV Prevalence` +
+                        `Percent Living with Severe Housing Cost Burden` + #economic stability
+                     offset(log(`Population`)),
+                            data = df)
+aic <- AIC(neg_bin_race)
+
+return(aic)
+
+}  
+```
+
+```{r}
+#Fitting CAR model (requires neighbors)
+car_function <- function(df) {   
+  h_race_df <- matrix(0, nrow(df), nrow(df))
+  h_race_df[cbind(match(us_nabs$StateCode, df$`State Abbreviation`),
+                  match(us_nabs$NeighborStateCode, df$`State Abbreviation`))] <- 1
+  
+  nablist_race_df <- mat2listw(h_race_df, style = "W")
+  
+  car_race <- spautolm(outcome_DR ~                      
+                        `Gini Coefficient` + # estimate income inequality
+                        `Percent Unemployed` +
+                        `Percent Less than High School Education` +  #estimate education access
+                        `Percent HIV Prevalence` +
+                        `Percent Living with Severe Housing Cost Burden`,#economic stability,
+                           data = df,
+                           listw = nablist_race_df,
+                           family = "CAR")
+  print(summary(car_race))
+  
+  ##pull fitted values
+df$car_fit <- car_race$fit$fitted.values
+
+return(df)
+
+}
+
+car_aic <- function(df) {
+  h_race_df <- matrix(0, nrow(df), nrow(df))
+  h_race_df[cbind(match(us_nabs$StateCode, df$`State Abbreviation`),
+                  match(us_nabs$NeighborStateCode, df$`State Abbreviation`))] <- 1
+  
+  nablist_race_df <- mat2listw(h_race_df, style = "W")
+  
+  car_race <- spautolm(outcome_DR ~                      
+                        `Gini Coefficient` + # estimate income inequality
+                        `Percent Unemployed` +
+                        `Percent Less than High School Education` +  #estimate education access
+                        `Percent HIV Prevalence` +
+                        `Percent Living with Severe Housing Cost Burden`,#economic stability,
+                           data = df,
+                           listw = nablist_race_df,
+                           family = "CAR")
+aic <- AIC(car_race)
+return(aic)
+
+} 
+```
+
+Making a function to pull AIC and organize into new dataframe
+```{r}
+aic_df <- function(x, mod_type, race) {
+  x <- tibble(x)
+  x <- x %>% 
+    mutate(Race = race, 
+           Model = mod_type,
+           AIC = round(x,2)) %>% 
+    select(Race, Model, AIC)
+}
+```
+
+
+Fitting multiple linear regression models
+```{r}
+black_df <- mult_function(black_df)
+
+black_mult <- mult_aic(black_df)
+black_mult <- aic_df(black_mult, "GLM", "Black")
+```
+
+```{r}
+hispanic_df <- mult_function(hispanic_df)
+
+hispanic_mult <- mult_aic(hispanic_df)
+hispanic_mult <- aic_df(hispanic_mult, "GLM", "Hispanic")
+```
+
+```{r}
+white_df <- mult_function(white_df)
+## SINCE THE OUTCOME IN NOT NORMALLY DISTRIBUTED, WE CANNOT USE GLM 
+white_df <- white_df %>% mutate(mult_fit = NA)
+
+white_mult <- mult_aic(white_df)
+white_mult <- aic_df(white_mult, "GLM", "White")
+
+white_mult <- white_mult %>% mutate(AIC = NA)
+```
+
+```{r}
+mult_mod <- list(black_mult, hispanic_mult, white_mult)
+
+mult_mod <- reduce(mult_mod, full_join)
+```
+
+
+Fitting Poisson models
+```{r}
+black_df <- pois_function(black_df)
+
+black_pois <- pois_aic(black_df)
+black_pois <- aic_df(black_pois, "Poisson", "Black")
+```
+
+```{r}
+hispanic_df <- pois_function(hispanic_df)
+
+hispanic_pois <- pois_aic(hispanic_df)
+hispanic_pois <- aic_df(hispanic_pois, "Poisson", "Hispanic")
+```
+
+```{r}
+white_df <- pois_function(white_df)
+
+white_pois <- pois_aic(white_df)
+white_pois <- aic_df(white_pois, "Poisson", "White")
+```
+
+Storing Poisson AIC
+```{r}
+pois_mod <- list(black_pois, hispanic_pois, white_pois)
+
+pois_mod <- reduce(pois_mod, full_join)
+```
+
+Fitting Negative binomial models
+```{r}
+black_df <- nb_function(black_df)
+
+black_nb <- nb_aic(black_df)
+black_nb <- aic_df(black_nb, "Negative Binomial", "Black")
+```
+
+```{r}
+hispanic_df <- nb_function(hispanic_df)
+
+hispanic_nb <- nb_aic(hispanic_df)
+hispanic_nb <- aic_df(hispanic_nb, "Negative Binomial", "Hispanic")
+```
+
+```{r}
+white_df <- nb_function(white_df)
+
+white_nb <- nb_aic(white_df)
+white_nb <- aic_df(white_nb, "Negative Binomial", "White")
+```
+
+```{r}
+nb_mod <- list(black_nb, hispanic_nb, white_nb)
+
+nb_mod <- reduce(nb_mod, full_join)
+```
+The NB model accounting for overdispersion fits better than the poisson model.
+
+Fitting CAR models
+```{r}
+black_df <- car_function(black_df)
+
+black_car <- car_aic(black_df)
+black_car <- aic_df(black_car, "CAR", "Black")
+```
+
+```{r}
+hispanic_df <- car_function(hispanic_df)
+
+hispanic_car <- car_aic(hispanic_df)
+hispanic_car <- aic_df(hispanic_car, "CAR", "Hispanic")
+```
+
+```{r}
+white_df <- car_function(white_df)
+## SINCE THE OUTCOME IN NOT NORMALLY DISTRIBUTED, WE CANNOT USE CAR
+white_df <- white_df %>% mutate(car_fit = NA)
+
+white_car <- car_aic(white_df)
+white_car <- aic_df(white_car, "CAR", "White")
+white_car <- white_car %>% mutate(AIC = NA)
+```
+
+```{r}
+car_mod <- list(black_car, hispanic_car, white_car)
+
+car_mod <- reduce(car_mod, full_join)
+```
+
+```{r}
+mod_aic <- list(mult_mod, pois_mod, nb_mod, car_mod)
+
+mod_aic <- reduce(mod_aic, full_join)
+```
+
+Join the data frames with all the fits.
+```{r}
+df <- list(black_df, hispanic_df, white_df)
+
+df <- reduce(df, full_join)
+
+saveRDS(df, here("data/processed_data/df_fit.rds"))
+```
+save the AIC dataframe
+```{r}
+saveRDS(mod_aic, here("data/processed_data/aic.rds"))
+```
+The model accounting for spatial variation provide the best fit.
+
+Creating function that subsets by specified race, and compute/ plots Moran's I and lisa.
+```{r}
+spacy_function <- function(df) {
+
+  h_race_df <- matrix(0, nrow(df), nrow(df))
+  h_race_df[cbind(match(us_nabs$StateCode, df$`State Abbreviation`),
+  match(us_nabs$NeighborStateCode, df$`State Abbreviation`))] <- 1
+  
+  nablist_race_df <- mat2listw(h_race_df, style = "W")
+
+ # plot Moran's I
+  print(moran.test(df$outcome_DR, nablist_race_df, zero.policy = TRUE, randomisation = FALSE))
+  moran.plot(df$outcome_DR, nablist_race_df, zero.policy = TRUE)
+  
+  # calculate and print LISA statistics
+  lisa_race <- localmoran(df$outcome_DR, nablist_race_df)
+  summary(lisa_race[,1])
+}
+```
+
+```{r}
+spacy_function(black_df)
+```
+
+```{r}
+png(here("results/moran_black.png"))
+sink(here("results/spacy_summary_black.txt"))
+spacy_function(black_df)
+sink()
+dev.off()
+```
+
+```{r}
+spacy_function(hispanic_df)
+```
+
+```{r}
+png(here("results/moran_hispanic.png"))
+sink(here("results/spacy_summary_hispanic.txt"))
+spacy_function(hispanic_df)
+sink()
+dev.off()
+```
+
+```{r}
+save.image(here("data/processed_data/race_env.rds"))
+```

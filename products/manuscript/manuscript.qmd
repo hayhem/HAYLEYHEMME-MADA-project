@@ -31,21 +31,23 @@ library(kableExtra)
 
 # Introduction
 
-HIV has a disproportionate impact on marginalized groups, resulting in significant disparities in rate of new HIV diagnoses and poor HIV-related health outcomes, such as late HIV diagnosis, progression to AIDS, and HIV-related death. Previous study have found direct links to indicators of social determinants of health and poorer health outcomes for persons with HIV
+HIV has a disproportionate impact on marginalized groups, resulting in significant disparities in rate of new HIV diagnoses and poor HIV-related health outcomes, such as late HIV diagnosis, progression to AIDS, and HIV-related death. In the United States, these disparities are most apparent when comparing HIV-related outcomes between Black and White persons. Previous study have found direct links to indicators of social determinants of health and poorer health outcomes for persons with HIV.
 
-Other studies have found an association between different SDOH measures and COVID-19 mortality that varied across racial and ethnic groups and community types
+Other studies have found an association between different SDOH measures and COVID-19 mortality that varied across racial and ethnic groups and community types.
+
+The goal of this project is to gain an understanding of factors associated the disparity of HIV-related death rates between Black and White persons in the United States.
 
 ## Question:
 
-Can the HIV death rate from 2020 in the United States be modeled by social determinants of health and/ or by HIV-related outcomes (late diagnoses, viral suppression) Are these factors correlated with disparities in HIV-related mortality across different racial and ethnic groups? Can a spatial model explain variation in HIV death-rates at the state-level and/or regional-level after accounting for variables associated with sociodemographic, SDOH, and HIV-related outcomes?
+Can the ratio of Black-to-White HIV-related mortality rate (MRR) from 2020 in the United States be modeled by social determinants of health or by HIV-related outcomes (late diagnoses, viral suppression). Can a spatial model explain variation in MMR at the state-level and regional-level after accounting for variables associated SDOH or HIV-related outcomes?
 
-H0 : There is not a spatial correlation HIV-related deaths and SDOH or HIV-related outcomes.
+H0 : There is no spatial correlation between Black-to-White HIV-related MRR and SDOH or HIV-related outcomes.
 
-Ha : There is a spatial correlation between HIV-related deaths and SDOH or HIV-related outcomes.
+Ha : There is a spatial correlation between Black-to-White HIV-related MRR and SDOH or HIV-related outcomes.
 
 # Background Information
 
-Since the emergence of the HIV epidemic in 1981 in the United States, more than 1.2 million people in the United States have been diagnosed with HIV, resulting in more than 700,000 HIV-related deaths \[cite\]. Medical advancements have led to effective antiretroviral therapies that not only treat HIV infection and reduce adverse HIV-related health outcomes, such as progression to AIDS, but have also led to use of these medications to prevent infection before and after potential exposure for people who are HIV negative Even still, more than 30,000 people in the United States continue to be diagnosed each year \[cite\]. While initiatives such the Ending the Epidemic may provide xxx, this is followed by nearly one decade of steadily maintained HIV diagnoses rates, suggesting that existence of effective medical therapy alone will not end the HIV epidemic in the United States given the complex barriers existence among populations who are most vulnerable for HIV infection. The goal of this project is to gain a between understanding of factors associated with HIV-related mortality in the United States in  
+Since the emergence of the HIV epidemic in 1981 in the United States, more than 1.2 million people in the United States have been diagnosed with HIV, resulting in more than 700,000 HIV-related deaths \[cite\]. Medical advancements have led to effective antiretroviral therapies that not only treat HIV infection and reduce adverse HIV-related health outcomes, such as progression to AIDS, but have also led to use of these medications to prevent infection before and after potential exposure for people who are HIV negative Even still, more than 30,000 people in the United States continue to be diagnosed each year \[cite\]. While initiatives such the Ending the Epidemic may provide xxx, this is followed by nearly one decade of steadily maintained HIV diagnoses rates, suggesting that existence of effective medical therapy alone will not end the HIV epidemic in the United States given the complex barriers existence among populations who are most vulnerable for HIV infection.
 
 # Materials and Methods
 
@@ -75,13 +77,13 @@ Spatial object of the contiguous United States was obtained from library(maps) i
 
 Data was cleaned to adjust variable format, merge dataframes, subset by race/ ethnicity, and for feature engineering. Several observations in response variables were suppressed due to small counts/ rates were represented by `-9`, and were re-coded to NA. To removed multicollinearity and to assess the relationship between predictors, principal component analysis (PCA). was used. Variables that had correlation greater that 0.3 in the first two principal components were deemed important. Scaled predictors of the the first three principal components were then used in various regression models multiple linear regression, Poisson regression, and negative binomial. Non-spatial and spatial methods were used.
 
-### Feature Engineering
+### Outcome Variables
 
-The primary response variable in this analysis was HIV-related death rate. Feature engineering of `death rate (estimated)` was performed using counts of HIV related deaths divided by the estimated population based on US Census data multiplied by 100,000 persons. Initially, persons of multiple racial backgrounds were considered in the analysis, however, significant discrepancies between the death rates provided by AIDSVu and the calculated death rate based on counts and estimated population meant that I could not reliably interpret these data. The decision to used `death rate (estimated)` instead of `death rate (AIDSVu)` was made to help ensure that differences across various models that used rates versus counts was not 'artifact'. Transformation of this variable was performed as necessary, and is discussed further in later sections.
+The primary response variable in this analysis is the ratio of Black-to-White HIV-related death rate (MRR). To compute this variable, feature engineering was performed to create `death rate (estimated)` stratified by race (Black and White) using counts of HIV related deaths divided by the estimated population based on US Census data multiplied by 100,000 persons. The variable `MRR` was then computed for each state by dividing the estimate death rates for Black persons divided by the estimate death for White persons. When using methods that required count data,
 
-### Variables considered
+Social Determinants of Health
 
-Predictor variables used in this analysis were selected to serve as proxy for SDOH. The Gini coefficient was used measure income inequality; percent living in poverty was used to estimate economic stability; percent with high school education was used to estimate access to education; percent uninsured under 65 was used to measure health care access; and percent with access to broadband internet was used to estimate the neighborhood and built environment.
+Predictors used in this analysis were selected to serve as proxy for SDOH. A number of variables were initially considered, but ultimately five predictors were selected: the Gini coefficient was used measure income inequality; percent living in poverty was used to estimate economic stability; percent uninsured under 65 was used to measure health care access; and percent without internet subscription was used to estimate the neighborhood and built environment; and percent living with food insecurity.
 
 ## Model Selection
 
@@ -89,29 +91,23 @@ The relative goodness of fit of the various models used in this analysis was ass
 
 # Analysis
 
-![](images/test-01.png){fig-align="center"}
-
 ## Univariate analysis
 
-![](images/dr_boxplot.png){fig-align="center" width="700"}
+Univariate analysis of HIV-related death rate
 
-The distribution of death rate was assessed for each race both visually and using the Shapiro test for normality. Below is the histogram of the distributed of the raw `death rate (estimated).`
+![](images/MRR_hist.png){fig-align="center"}
 
-![](images/dr_hist-01.png){fig-align="center" width="700"}
+![](images/dr_state.png){fig-align="center"}
 
-The death rate for Black persons did not require transformation and the death rate for Hispanic persons was normalized using a log + 1 transformation. Despite utilizing transformations of increasing complexity and power, including Box Cox and Yeo Johnson transformations, I was not able to normalize the distribution of death rate for White persons. As a result, I was unable to include White persons in the model for assessing for spatial correlation. While there are techniques to handle spatial data that is not normally distributed, such as geographically weighted Poisson regression and geographically weight negative binomial regression, my knowledge of the implementation of these techniques limited my ability to uses these methods in my analysis.
+![](images/table1.png){fig-align="center"}
 
-![](images/raw_rate_map-05.png){fig-align="center"}
+The distribution of death rate was assessed for each race both visually and using the Shapiro test for normality. Based on the Shapiro test, there was insufficient evidence to reject normality with a p-value of 0.63. No normalizing transformation was needed. Below is the histogram of the our primary outcome variable, MRR.
 
-![](images/roe_map-05.png)
-
-![](images/chi_map-05.png){fig-align="center"}
-
-|                                             |                                          |
-|---------------------------------------------|------------------------------------------|
-| ![](images/gini_map.png){width="300"}       | ![](images/ed_map-01.png){width="300"}   |
-| ![](images/housing_map.png){width="300"}    | ![](images/poverty_map.png){width="300"} |
-| ![](images/unemployed_map.png){width="300"} |                                          |
+|     |     |
+|-----|-----|
+|     |     |
+|     |     |
+|     |     |
 
 ```{r}
 
@@ -121,25 +117,21 @@ The death rate for Black persons did not require transformation and the death ra
 
 ## Bivariate Analysis
 
-![](images/bi_gini-01.png){fig-align="center" width="429"}
+Ultimately
 
-![](images/bi_ed-01.png){fig-align="center" width="429"}
-
-![](images/bi_housing-01.png){fig-align="center" width="429"}
-
-![](images/bi_unemployed.png){fig-align="center" width="429"}
-
-![](images/bi_pov-01.png){fig-align="center" width="429"}
+|                                    |                                 |
+|------------------------------------|---------------------------------|
+| ![](images/bi_pov-03.png)          | ![](images/bi_gini-04.png)      |
+| ![](images/bi_unemployed-02.png)   | ![](images/bi_uninsured-01.png) |
+| ![](images/bi_foodinsecure-01.png) |                                 |
 
 *To get some further insight into your data, if reasonable you could compute simple statistics (e.g. simple models with 1 predictor) to look for associations between your outcome(s) and each individual predictor variable. Though note that unless you pre-specified the outcome and main exposure, any "p\<0.05 means statistical significance" interpretation is not valid.*
 
 ## Full analysis
 
-![](images/corr_mat.png){fig-align="center" width="429"}
+![](images/corr_mat-01.png){fig-align="center"}
 
-![](images/scree_plot.png){fig-align="center" width="429"}
-
-![](images/fitted_map-03.png){fig-align="center"}
+![](images/contriution_plot.png){fig-align="center"}
 
 *Use one or several suitable statistical/machine learning methods to analyze your data and to produce meaningful figures, tables, etc. This might again be code that is best placed in one or several separate R scripts that need to be well documented. You want the code to produce figures and data ready for display as tables, and save those. Then you load them here.*
 

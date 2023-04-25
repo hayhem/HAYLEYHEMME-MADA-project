@@ -1,0 +1,245 @@
+```{r message=FALSE, warning=FALSE}
+library(here)
+library(spdep)
+library(GGally)
+library(skimr)
+library(ggfortify)
+library(MASS)
+library(ggcorrplot)
+library("FactoMineR")
+library(tidyverse)
+library(broom)
+library(knitr)
+library(ggpubr)
+```
+
+https://github.com/ubikuity/List-of-neighboring-states-for-each-US-state
+List-of-neighboring-states-for-each-US-state
+
+```{r}
+race_sub <- readRDS(here("data/processed_data/race_df_alt.rds"))
+us_nabs <- readRDS(here("data/processed_data/us_nabs.rds"))
+
+#Subsetting to only contiguous states.
+race_sub <- race_sub %>%
+  filter(!grepl("Alaska", State),
+         !grepl("Hawaii", State))
+
+us_nabs <- us_nabs %>%
+  filter(!grepl("AK", StateCode),
+         !grepl("HI", StateCode), 
+         !grepl("DC", StateCode))
+```
+
+Let's create a variable for mortality rate ratio of Black/ White
+```{r}
+race_sub <- race_sub %>%
+  group_by(State) %>%
+  mutate(MRR = `Death Rate (estimated)`[Race == "Black"] / `Death Rate (estimated)`[Race == "White"])
+```
+
+
+Let's start by looking at the overall HIV-related death rate by race in the United States.
+```{r}
+race_sub %>% 
+  group_by(Race) %>% 
+  summarize(tot_deaths = sum(`Death Cases`),
+            tot_population = sum(`Population`),
+            overall_rate = round(tot_deaths/ tot_population *1e5,1)) %>% 
+  ungroup() %>% 
+  mutate(percent_by_race = round(tot_deaths/sum(tot_deaths)*100, 1),
+         ratio = round(overall_rate/overall_rate[Race =="White"],1)) %>%
+  kable(col.names = c("Race/ Ethnicity",
+                      "HIV-Related Deaths (n)",
+                      "Population (>12 years old)",
+                      "Death Rate (per 100,000)",
+                      "Percent",
+                      "Ratio"))
+# using white persons as reference group
+```
+
+
+We can seen that Black persons accounts for the 43.5% of HIV-related deaths in United States, and the rate of HIV-related deaths among this population was 7.2 times high than the rate of HIV-related deaths among White persons.
+
+Next, let's take a look at our response variable
+Univariate Analysis
+
+Let's take a look at some box plots of death rate by races and state. 
+We'll start by looking at death rate given by the AIDSVu dataset. 
+```{r}
+race_sub %>% 
+  ggplot() +
+  geom_boxplot(aes(y = `Death Rate (estimated)`, x = Race, group = Race)) + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio, United States, 2020", y = "Ratio", x = "Race/ Ethnicity") + theme(legend.position = "none") 
+```
+
+Histogram
+```{r}
+race_sub %>% 
+  filter(Race == "Black") %>% 
+  ggplot() +
+  geom_histogram(aes(x = `MRR`), bins = 10) + 
+  theme(legend.position = "none") +
+  labs(title = "Histogram of Black-to-White HIV-Related Mortality Rate Ratio, United States, 2020", y = "n", x = "Ratio") + theme_classic()
+ggsave(here("results/MRR_hist.png"), units="in", width=10, height=7, dpi=300)
+
+race_sub %>% 
+   filter(Race == "Black") %>% 
+  pull(`MRR`) %>% 
+  shapiro.test()
+
+race_sub %>% 
+  ggplot() +
+  geom_boxplot(aes(y = `Death Rate (estimated)`, x = Race, group = Race)) + 
+  theme(legend.position = "none") +
+  labs(title = "HIV-Related Death Rate, by Race, United States, 2020", y = "Rate (per 100,000)", x = "Race") + theme_classic()
+ggsave(here("results/dr_race_bp.png"), units="in", width=10, height=5, dpi=300)
+
+race_sub %>% 
+  ggplot() +
+  geom_bar(aes(y = `Death Rate (estimated)`, x = `State Abbreviation`, group = `State Abbreviation`, fill = Race),
+           stat = "identity", position = "dodge") + theme_classic() + 
+  theme(legend.position = "bottom") +
+  labs(title = "HIV-Related Death Rate of Black and White Persons, by State, United States, 2020", y = "Rate (per 100,000)", x = "State")
+ggsave(here("results/dr_state.png"), units="in", width=12, height=5, dpi=300)
+
+```
+
+Let's move on to
+Bivariate Analysis
+```{r}
+ggplot(race_sub, aes(y = MRR, x = `Percent Living in Poverty`)) +
+  geom_smooth(method = "lm") + 
+  geom_point() + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
+       Percent Living in Poverty") + 
+  stat_cor(method = "pearson") 
+#  pass
+ggsave(here("results/bi_pov.png"), units="in", width=10, height=7, dpi=300)
+```
+
+
+```{r}
+ggplot(race_sub, aes(y = MRR, x = `Percent Unemployed`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
+       Percent Unemployed") + 
+  stat_cor(method = "pearson") 
+ggsave(here("results/bi_unemployed.png"), units="in", width=10, height=7, dpi=300)
+#  did not pass 
+```
+
+```{r}
+ggplot(race_sub, aes(y = MRR, x = `Gini Coefficient`)) +
+    geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
+       Gini Coefficient") +
+  stat_cor(method = "pearson") 
+ggsave(here("results/bi_gini.png"), units="in", width=10, height=7, dpi=300)
+# did not "pass"
+```
+
+```{r}
+ggplot(race_sub, aes(y = MRR, x = `Percent Less than High School Education`)) +
+  geom_smooth(method = "lm") + 
+  geom_point() + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
+       Percent Less than High School Education") +
+  stat_cor(method="pearson")
+#  did not pass
+```
+
+```{r}
+ggplot(race_sub, aes(y = MRR, x = `Percent Living with Severe Housing Cost Burden`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
+       Percent Living with Severe Housing Cost Burden") + 
+  stat_cor(method="pearson")
+#  did not pass
+ggsave(here("results/bi_housing.png"), units="in", width=10, height=7, dpi=300)
+```
+
+```{r}
+ggplot(race_sub, aes(y = MRR, x = `Percent Without an Internet subscription`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
+       Percent Without an Internet Subscription") + 
+  stat_cor(method="pearson")
+# "pass"
+```
+
+```{r}
+ggplot(race_sub, aes(y = MRR, x = `Percent Uninsured Under 65 Years Old`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
+       Percent Uninsured Under 65 Years Old") + 
+  stat_cor(method="pearson")
+# "pass"
+ggsave(here("results/bi_uninsured.png"), units="in", width=10, height=7, dpi=300)
+```
+
+```{r}
+ggplot(race_sub, aes(y = MRR, x = `Percent Living with Food Insecurity`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
+       Percent Living with Food Insecurity") + 
+  stat_cor(method="pearson")
+# pass"
+ggsave(here("results/bi_foodinsecure.png"), units="in", width=10, height=7, dpi=300)
+```
+
+```{r}
+ggplot(race_sub, aes(y = MRR, x = `Median Household Income`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
+       Median Household Income") + 
+  stat_cor(method="pearson")
+# "pass"
+```
+
+```{r}
+ggplot(race_sub, aes(y = MRR, x = `Percentage Diagnosed Late`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
+       Percentage Diagnosed Late") + 
+  stat_cor(method="pearson")
+# "pass"
+ggsave(here("results/bi_latedx.png"), units="in", width=10, height=7, dpi=300)
+```
+
+```{r}
+ggplot(race_sub, aes(y = MRR, x = `Percentage Virally Suppressed`)) +
+  geom_smooth(method = "lm") +
+  geom_point() + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
+       Percentage Virally Suppressed") + 
+  stat_cor(method="pearson")
+#did not pass
+```
+Now that we have an idea of the relationship between our outcome and potential predictors, next I need to account for the fact that these variables a likely have some degree of multicollinearity. In the next step we will be using PCA to scale our predictors. 
+
+```{r}
+pos_predictors <- race_sub %>% 
+  select(c("State", 
+           "Race",
+           "Percent Living in Poverty",
+           "Percent Without an Internet subscription",
+           "Percent Uninsured Under 65 Years Old",
+           "Percent Living with Food Insecurity",
+           "Percent Living with Severe Housing Cost Burden",
+           "Median Household Income",
+           "Percentage Diagnosed Late"))
+```
+
+```{r}
+saveRDS(pos_predictors, here("data/processed_data/pos_predictors.rds"))
+saveRDS(race_sub, here("data/processed_data/race_alt.rds"))
+```

@@ -1,0 +1,75 @@
+```{r message=FALSE, warning=FALSE}
+library(ggcorrplot)
+library(FactoMineR)
+library(factoextra)
+library(here)
+library(knitr)
+library(tidyverse)
+library(broom)
+
+race_sub <- readRDS(here("data/processed_data/race_alt.rds"))
+pos_predictors <- readRDS(here("data/processed_data/pos_predictors.rds"))
+
+```
+
+PCA
+```{r}
+race_sub <- race_sub %>%
+    select_if(~ !any(is.na(.))) %>% 
+  #filter(Race == "Black") %>% 
+  ungroup()
+  
+  #separating the y variables
+df_response <- race_sub %>%
+    select(contains(c("State", "Ratio", "MRR", "Race", "Death", "Population"))) 
+  
+  # pulling variables that were correlated with MRR, and thenp scaling
+pos_predictors_scaled <- pos_predictors %>% 
+    ungroup() %>% 
+    mutate(across(where(is.numeric), scale))
+
+#Setting up correlation matrix
+corr_matrix <- pos_predictors_scaled %>% 
+    select(c(3:9)) %>% 
+    cor()
+
+  #setting up correlation matrix 
+print(ggcorrplot(corr_matrix))
+ggsave(here("results/corr_mat.png"), units="in", width=10, height=7, dpi=300)
+```
+
+```{r}
+#applying pca
+pca <- princomp(corr_matrix)
+print(summary(pca))
+
+#pca loadings of principal components 1 and 2
+print(pca$loadings[, 1:2])
+
+#Scree plot
+print(fviz_eig(pca, addlabels = TRUE))
+ggsave(here("results/scree_plot.png"), units="in", width=10, height=7, dpi=300)
+```
+Since we originally had 11 variables, we should only look at components that explain more than 9.1% of variation. We can see from the scree plot that principal component 1 explained 73.3% of variation, and components 1 and 2 explained 94.9% of the variation, and components 1 - 2 explained 91.1%. All other principal components explains less that 8.9% of variation, so they will excluded. 
+
+```{r}
+#Contribution of each variable 
+print(fviz_cos2(pca, choice = "var", axes = 1:2))
+ggsave(here("results/contribution_plot.png"), units="in", width=10, height=7, dpi=300)
+
+# Biplot of the attributes
+print(fviz_pca_var(pca, col.var = "cos2",
+                   gradient.cols = c("darkblue", "orange", "green"),
+                   repel = TRUE, title = "PCA"
+                   ))
+ggsave(here("results/biplot.png"), units="in", width=10, height=7, dpi=300)
+# Variables in green are a good representation of the variable on that component.
+
+#Creating object to store scaled dataframes
+df_scaled <- full_join(df_response, pos_predictors_scaled, by = join_by("State", "Race"))
+```
+
+
+```{r}
+saveRDS(df_scaled, here("data/processed_data/df_scaled_alt.rds"))
+```

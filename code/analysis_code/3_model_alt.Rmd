@@ -1,0 +1,247 @@
+```{r message=FALSE, warning=FALSE}
+library(here)
+library(MASS)
+library(spatialreg)
+library(spdep)
+library(tidyverse)
+```
+
+```{r}
+df <- readRDS(here("data/processed_data/df_scaled_alt.rds"))
+us_nabs <- readRDS(here("data/processed_data/us_nabs.rds"))
+
+#Subset to contiguous states
+us_nabs <- us_nabs %>%
+  filter(!grepl("AK", StateCode),
+         !grepl("HI", StateCode), 
+         !grepl("DC", StateCode))
+
+```
+
+```{r}
+states <- data.frame(state.name)
+states$region <- case_when(
+  states$state.name %in% c("Connecticut", "Maine", "Massachusetts", "New Hampshire", "Rhode Island", "Vermont", "New Jersey", "New York", "Pennsylvania") ~ "Northeast",
+  states$state.name %in% c("Illinois", "Indiana", "Iowa", "Kansas", "Michigan", "Minnesota", "Missouri", "Nebraska", "North Dakota", "Ohio", "South Dakota", "Wisconsin") ~ "Midwest",
+  states$state.name %in% c("Alabama", "Arkansas", "Delaware", "Florida", "Georgia", "Kentucky", "Louisiana", "Maryland", "Mississippi", "North Carolina", "Oklahoma", "South Carolina", "Tennessee", "Texas", "Virginia", "West Virginia") ~ "South",
+  states$state.name %in% c("Arizona", "California", "Colorado", "Idaho", "Montana", "Nevada", "New Mexico", "Oregon", "Utah", "Washington", "Wyoming") ~ "West"
+)
+
+df <- full_join(df, states, by = join_by(State == state.name))
+
+df <- df %>% 
+  filter(!grepl("Alaska", State),
+         !grepl("Hawaii", State))
+```
+
+
+Setting up functions for models
+```{r}
+ #multiple linear regression
+mult_function <- function(df) {
+  mult_race <- glm(MRR ~ 
+                        `Percent Living in Poverty` +
+                        `Percent Without an Internet subscription` +
+                        `Percent Uninsured Under 65 Years Old` +
+                        `Median Household Income`  +
+                     #   `Percent Living with Severe Housing Cost Burden` +
+                        `Percent Living with Food Insecurity`, 
+                     data = df,
+                     family = "gaussian")
+  print(summary(mult_race))
+    ##pull fitted values
+df$mult_fit <- mult_race$fitted.values
+return(df)
+}
+
+## function to fit GLM and pull AIC
+mult_aic <- function(df) {
+  mult_race <- glm(MRR ~ 
+                        `Percent Living in Poverty` +
+                        `Percent Without an Internet subscription` +
+                        `Percent Uninsured Under 65 Years Old` +
+                        `Median Household Income`  +
+                       # `Percent Living with Severe Housing Cost Burden` +
+                        `Percent Living with Food Insecurity`,
+                     data = df,
+                     family = "gaussian")
+aic <- AIC(mult_race)
+
+return(aic)
+}
+```
+
+```{r}
+df <- mult_function(df)
+
+df_mult <- mult_aic(df)
+```
+
+```{r}
+  #poisson
+pois_function <- function(df) {
+
+pois_race <- glm(`Death Cases` ~ Race +
+                        `Percent Living in Poverty` +
+                       # `Gini Coefficient` + 
+                        `Percent Without an Internet subscription` +
+                        `Percent Uninsured Under 65 Years Old` +
+                        `Median Household Income`  +
+                        `Percent Living with Food Insecurity` +
+                        #`Percent Living with Severe Housing Cost Burden` +
+                     offset(log(`Population`)),
+                     data = df,
+                     family = poisson(link = "log"))
+  print(summary(pois_race))
+  
+      ##pull fitted values
+df$pois_fit <- pois_race$fitted.values
+
+return(df)
+
+}
+
+## function to fit GLM and pull AIC
+pois_aic <- function(df) {
+  pois_race <- glm(`Death Cases` ~  Race +
+                        `Percent Living in Poverty` +
+                      #  `Gini Coefficient` + 
+                        `Percent Without an Internet subscription` +
+                        `Percent Uninsured Under 65 Years Old` +
+                        `Median Household Income`  +
+                        `Percent Living with Food Insecurity` +
+                       # `Percent Living with Severe Housing Cost Burden` +
+                     offset(log(`Population`)),
+                     data = df,
+                     family = poisson(link = "log"))
+aic <- AIC(pois_race)
+return(aic)
+}
+```
+
+```{r}
+df <- pois_function(df)
+
+df_pois <- pois_aic(df)
+```
+
+
+```{r}
+  #Negative binomial
+nb_function  <- function(df) {
+  neg_bin_race <- glm.nb(`Death Cases` ~ Race +
+                        `Percent Living in Poverty` +
+                       # `Gini Coefficient` + 
+                        `Percent Without an Internet subscription` +
+                        `Percent Uninsured Under 65 Years Old` +
+                        `Median Household Income`  +
+                        `Percent Living with Food Insecurity`  +
+                       # `Percent Living with Severe Housing Cost Burden` +
+                     offset(log(`Population`)),
+                            data = df)
+  print(summary(neg_bin_race))
+  
+      ##pull fitted values
+df$nb_fit <- neg_bin_race$fitted.values
+
+return(df)
+
+}
+
+## function to fit GLM and pull AIC
+nb_aic <- function(df) {
+  neg_bin_race <- glm.nb(`Death Cases` ~ Race +
+                        `Percent Living in Poverty` +
+                       # `Gini Coefficient` + 
+                        `Percent Without an Internet subscription` +
+                        `Percent Uninsured Under 65 Years Old` +
+                        `Median Household Income`  +
+                        `Percent Living with Food Insecurity`  +
+                        #`Percent Living with Severe Housing Cost Burden` +
+                     offset(log(`Population`)),
+                            data = df)
+aic <- AIC(neg_bin_race)
+
+return(aic)
+
+}  
+```
+
+```{r}
+df <- nb_function(df)
+
+df_nb <- nb_aic(df)
+```
+
+```{r}
+#Fitting CAR model (requires neighbors)
+car_function <- function(df) {   
+  h_race_df <- matrix(0, nrow(df), nrow(df))
+  h_race_df[cbind(match(us_nabs$StateCode, df$`State Abbreviation`),
+                  match(us_nabs$NeighborStateCode, df$`State Abbreviation`))] <- 1
+  
+  nablist_race_df <- mat2listw(h_race_df, style = "W")
+  
+  car_race <- spautolm(MRR ~                      
+                        `Percent Living in Poverty` +
+                       `Median Household Income` + 
+                        `Percent Without an Internet subscription` +
+                        `Percent Uninsured Under 65 Years Old` +
+                     #   `Percent Unemployed`  +
+                     #   `Percent Living with Severe Housing Cost Burden` +
+                        `Percent Living with Food Insecurity`, 
+                           data = df,
+                           listw = nablist_race_df,
+                           family = "CAR")
+  print(summary(car_race))
+  
+  ##pull fitted values
+df$car_fit <- car_race$fit$fitted.values
+
+return(df)
+
+}
+
+car_aic <- function(df) {
+  h_race_df <- matrix(0, nrow(df), nrow(df))
+  h_race_df[cbind(match(us_nabs$StateCode, df$`State Abbreviation`),
+                  match(us_nabs$NeighborStateCode, df$`State Abbreviation`))] <- 1
+  
+  nablist_race_df <- mat2listw(h_race_df, style = "W")
+  
+  car_race <- spautolm(MRR ~                      
+                        `Percent Living in Poverty` +
+                       `Median Household Income` + 
+                        `Percent Without an Internet subscription` +
+                        `Percent Uninsured Under 65 Years Old` +
+                   #     `Percent Unemployed`  +
+                      #  `Percent Living with Severe Housing Cost Burden` +
+                        `Percent Living with Food Insecurity`, 
+                           data = df,
+                           listw = nablist_race_df,
+                           family = "CAR")
+aic <- AIC(car_race)
+return(aic)
+
+} 
+```
+
+```{r}
+df <- car_function(df)
+
+df_car <- car_aic(df)
+```
+
+Organizing mod_AIC into new dataframe
+```{r}
+aic_df <- data.frame(AIC = c(df_mult, df_pois, df_nb, df_car),
+                     Model = c("GLM", "Poisson", "Negative Binomial", "CAR"),
+                     Outcome = c("Ratio", "Count", "Count", "Ratio"))
+aic_df <- aic_df %>% mutate(AIC  = round(AIC, 2))
+```
+
+```{r}
+saveRDS(df, here("data/processed_data/df_fit_alt.rds"))
+
+saveRDS(aic_df, here("data/processed_data/aic_alt.rds"))
+```
