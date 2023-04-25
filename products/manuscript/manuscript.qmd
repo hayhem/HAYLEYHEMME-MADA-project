@@ -25,17 +25,13 @@ library(kableExtra)
 
 # Summary/Abstract
 
-*Write a summary of your project.*
+This project aims to identify factors associated with racial disparities in HIV-related death rates in the United States. To assess this, we look at the ratio of Black-to-White HIV-related mortality rate (MRR) from 2020 in the United States. Additionally, we assess whether social determinants of health (SDOH) can explain variation in MMR at the state-level and regional-level. Both spatial and non-spatial methods were used.
 
 {{< pagebreak >}}
 
 # Introduction
 
-HIV has a disproportionate impact on marginalized groups, resulting in significant disparities in rate of new HIV diagnoses and poor HIV-related health outcomes, such as late HIV diagnosis, progression to AIDS, and HIV-related death. In the United States, these disparities are most apparent when comparing HIV-related outcomes between Black and White persons. Previous study have found direct links to indicators of social determinants of health and poorer health outcomes for persons with HIV.
-
-Other studies have found an association between different SDOH measures and COVID-19 mortality that varied across racial and ethnic groups and community types.
-
-The goal of this project is to gain an understanding of factors associated the disparity of HIV-related death rates between Black and White persons in the United States.
+HIV continues to have a significant impact on marginalized communities, leading to significant disparities in the rates of new HIV diagnoses and HIV-related health outcomes, including late HIV diagnosis, progression to AIDS, and HIV-related death. The extent of these disparities are particularly pronounced in the United States when comparing HIV-related outcomes among Black and White persons. Studies have revealed a direct correlation between social determinants of health indicators and poor health outcomes for people with HIV. In this project, our objective is to identify the factors contributing to the disparities in HIV-related death rates between Black and White individuals in the United States.
 
 ## Question:
 
@@ -47,7 +43,7 @@ Ha : There is a spatial correlation between Black-to-White HIV-related MRR and S
 
 # Background Information
 
-Since the emergence of the HIV epidemic in 1981 in the United States, more than 1.2 million people in the United States have been diagnosed with HIV, resulting in more than 700,000 HIV-related deaths \[cite\]. Medical advancements have led to effective antiretroviral therapies that not only treat HIV infection and reduce adverse HIV-related health outcomes, such as progression to AIDS, but have also led to use of these medications to prevent infection before and after potential exposure for people who are HIV negative Even still, more than 30,000 people in the United States continue to be diagnosed each year \[cite\]. While initiatives such the Ending the Epidemic may provide xxx, this is followed by nearly one decade of steadily maintained HIV diagnoses rates, suggesting that existence of effective medical therapy alone will not end the HIV epidemic in the United States given the complex barriers existence among populations who are most vulnerable for HIV infection.
+Since the emergence of the HIV epidemic in 1981 in the United States, more than 1.2 million people in the United States have been diagnosed with HIV, resulting in more than 700,000 HIV-related deaths \cite{jun07HIVAIDSEpidemic2021}. Medical advancements have led to effective antiretroviral therapies that not only treat HIV infection and reduce adverse HIV-related health outcomes, such as progression to AIDS, but have also led to use of these medications to prevent infection before and after potential exposure for people who are HIV negative Even still, more than 30,000 people in the United States continue to be diagnosed each year \cite{jun07HIVAIDSEpidemic2021}. While the Ending the Epidemic initiative set up a goal of 90% reduction in new HIV infections by 2030 by upscaling efforts in HIV diagnoses treatment, and prevention, this is followed by nearly one decade of steady HIV diagnoses rates. Developing targeted intervention programs is essential to achieve this goal. To accomplish this, we need to gain a deeper understanding of the impact or contribution of complex factors such as social determinants of health or other barriers to poor HIV-related outcomes and disparities.
 
 # Materials and Methods
 
@@ -69,7 +65,7 @@ Data on the percentage distribution of children under 14 years old was obtained 
 
 ### Spatial data
 
-In order to assess spatial associations, this analysis was limited to the contiguous United States. Spatial object of the contiguous United States was obtained from library(maps) in R and a list of neighboring contiguous United States was obtained from a public repository on GitHub. https://github.com/ubikuity/List-of-neighboring-states-for-each-US-state
+In order to assess spatial associations, this analysis was limited to the contiguous United States. Spatial object of the contiguous United States was obtained from library(maps) in R and a list of neighboring contiguous United States was obtained from a public repository on [GitHub](https://github.com/ubikuity/List-of-neighboring-states-for-each-US-state). \cite{ubikuityListofneighboringstatesforeachUSstate2022}
 
 ## Data processing
 
@@ -79,9 +75,9 @@ Data was cleaned to adjust variable format, merge dataframes, subset by race/ et
 
 ### Outcome Variables
 
-The primary response variable in this analysis is the ratio of Black-to-White HIV-related death rate (MRR). To compute this variable, feature engineering was performed to create `death rate (estimated)` stratified by race (Black and White) using counts of HIV related deaths divided by the estimated population based on US Census data multiplied by 100,000 persons. The variable `MRR` was then computed for each state by dividing the estimate death rates for Black persons divided by the estimate death for White persons. When using methods that required count data,
+The primary response variable in this analysis is the ratio of Black-to-White HIV-related death rate (MRR). To compute this variable, feature engineering was performed to create `death rate (estimated)` stratified by race (Black and White) using counts of HIV related deaths divided by the estimated population based on US Census data multiplied by 100,000 persons. The variable `MRR` was then computed for each state by dividing the estimate death rates for Black persons divided by the estimate death for White persons.
 
-Social Determinants of Health
+### Social Determinants of Health
 
 Predictors used in this analysis were selected to serve as proxy for SDOH. A number of variables were initially considered, but ultimately five predictors were selected: the Gini coefficient was used measure income inequality; percent living in poverty was used to estimate economic stability; percent uninsured under 65 was used to measure health care access; and percent without internet subscription was used to estimate the neighborhood and built environment; and percent living with food insecurity.
 
@@ -125,16 +121,16 @@ Table 2 shows maps of selected predictors in the United States in 2020. We can s
 
 Table 2.
 
-|                             |                               |                                    |
-|-----------------------------|-------------------------------|------------------------------------|
-| ![](images/gini_map-02.png) | ![](images/uninsured_map.png) | ![](images/no_internet_map-01.png) |
+|                                          |                                            |                                                 |
+|----------------------|-----------------------|---------------------------|
+| ![](images/gini_map-02.png){width="200"} | ![](images/uninsured_map.png){width="200"} | ![](images/no_internet_map-01.png){width="200"} |
 
 ## Bivariate Analysis and Principal Component Analysis
 
 To narrow down potential predictors to include in later models, I first started by performing simple linear regression models of MRR vs one of the possible predictors. Variables that had a correlation coefficient of \|0.15\| or more were then selected as possible variables for analysis. These possible predictors were then scaled and principal component analysis (PCA) was performed.
 
 |                                              |                                                 |
-|----------------------------------------------|-------------------------------------------------|
+|-----------------------------------|-------------------------------------|
 | ![](images/bi_gini-05.png){width="300"}      |                                                 |
 | ![](images/bi_no_internet.png){width="300"}  | ![](images/bi_pov-04.png){width="300"}          |
 | ![](images/bi_uninsured-02.png){width="300"} | ![](images/bi_foodinsecure-02.png){width="300"} |
@@ -142,7 +138,7 @@ To narrow down potential predictors to include in later models, I first started 
 Table 2. shows the plot from the bivariate analysis of predictors that were scaled and included in the PCA. Table 3 shows the results of PCA.
 
 |                                          |                                                |
-|------------------------------------------|------------------------------------------------|
+|----------------------------------|--------------------------------------|
 | ![](images/corr_mat-02.png){width="300"} | ![](images/scree_plot-01.png){width="300"}     |
 | ![](images/biplot.png){width="300"}      | ![](images/contribution_plot.png){width="300"} |
 
@@ -150,17 +146,15 @@ Results of the PCA shows that the first three principal components contributed f
 
 ## Full analysis
 
-![](images/car_fit_map-01.png){fig-align="center"}
+![](images/car_fit_map-01.png){fig-align="center" width="600"}
 
-![](images/mult_fit_map.png)
+![](images/mult_fit_map.png){width="600"}
 
-|                                 |                                  |
-|---------------------------------|----------------------------------|
-| ![](images/car_pred_map-03.png) | ![](images/mult_pred_map-02.png) |
+|                                              |                                               |
+|----------------------------------------------|-----------------------------------------------|
+| ![](images/car_pred_map-03.png){width="350"} | ![](images/mult_pred_map-02.png){width="350"} |
 
 The CAR model accounting for spatial variation only performed marginally better than the GLM model that did not account for spatial variation.
-
-*Use one or several suitable statistical/machine learning methods to analyze your data and to produce meaningful figures, tables, etc. This might again be code that is best placed in one or several separate R scripts that need to be well documented. You want the code to produce figures and data ready for display as tables, and save those. Then you load them here.*
 
 {{< pagebreak >}}
 
