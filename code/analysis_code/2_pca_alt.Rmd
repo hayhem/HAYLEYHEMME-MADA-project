@@ -21,16 +21,16 @@ race_sub <- race_sub %>%
   
   #separating the y variables
 df_response <- race_sub %>%
-    select(contains(c("State", "Ratio", "MRR", "Race", "Death", "Population"))) 
+    select(contains(c("State","Region", "Ratio", "MRR", "Race", "Death", "Population"))) 
   
-  # pulling variables that were correlated with MRR, and thenp scaling
+  # pulling variables that were correlated with MRR, and then scaling
 pos_predictors_scaled <- pos_predictors %>% 
     ungroup() %>% 
     mutate(across(where(is.numeric), scale))
 
 #Setting up correlation matrix
 corr_matrix <- pos_predictors_scaled %>% 
-    select(c(3:9)) %>% 
+    select(c(3:7)) %>% 
     cor()
 
   #setting up correlation matrix 
@@ -44,13 +44,13 @@ pca <- princomp(corr_matrix)
 print(summary(pca))
 
 #pca loadings of principal components 1 and 2
-print(pca$loadings[, 1:2])
+print(pca$loadings[, 1:3])
 
 #Scree plot
 print(fviz_eig(pca, addlabels = TRUE))
 ggsave(here("results/scree_plot.png"), units="in", width=10, height=7, dpi=300)
 ```
-Since we originally had 11 variables, we should only look at components that explain more than 9.1% of variation. We can see from the scree plot that principal component 1 explained 73.3% of variation, and components 1 and 2 explained 94.9% of the variation, and components 1 - 2 explained 91.1%. All other principal components explains less that 8.9% of variation, so they will excluded. 
+Since we originally had 5 variables, we should only look at components that explain more than 20% of variation. This is includes components 1 through 3. All other principal components explains less that 8.9% of variation, so they will excluded. 
 
 ```{r}
 #Contribution of each variable 

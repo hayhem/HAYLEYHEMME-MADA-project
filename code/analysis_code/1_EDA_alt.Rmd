@@ -10,6 +10,7 @@ library("FactoMineR")
 library(tidyverse)
 library(broom)
 library(knitr)
+library(kableExtra)
 library(ggpubr)
 ```
 
@@ -31,6 +32,22 @@ us_nabs <- us_nabs %>%
          !grepl("DC", StateCode))
 ```
 
+```{r}
+states <- data.frame(state.name)
+states$Region <- case_when(
+  states$state.name %in% c("Connecticut", "Maine", "Massachusetts", "New Hampshire", "Rhode Island", "Vermont", "New Jersey", "New York", "Pennsylvania") ~ "Northeast",
+  states$state.name %in% c("Illinois", "Indiana", "Iowa", "Kansas", "Michigan", "Minnesota", "Missouri", "Nebraska", "North Dakota", "Ohio", "South Dakota", "Wisconsin") ~ "Midwest",
+  states$state.name %in% c("Alabama", "Arkansas", "Delaware", "Florida", "Georgia", "Kentucky", "Louisiana", "Maryland", "Mississippi", "North Carolina", "Oklahoma", "South Carolina", "Tennessee", "Texas", "Virginia", "West Virginia") ~ "South",
+  states$state.name %in% c("Arizona", "California", "Colorado", "Idaho", "Montana", "Nevada", "New Mexico", "Oregon", "Utah", "Washington", "Wyoming") ~ "West"
+)
+
+race_sub <- full_join(race_sub, states, by = join_by(State == state.name))
+
+race_sub <- race_sub %>% 
+  filter(!grepl("Alaska", State),
+         !grepl("Hawaii", State))
+```
+
 Let's create a variable for mortality rate ratio of Black/ White
 ```{r}
 race_sub <- race_sub %>%
@@ -41,20 +58,60 @@ race_sub <- race_sub %>%
 
 Let's start by looking at the overall HIV-related death rate by race in the United States.
 ```{r}
-race_sub %>% 
+table1 <- race_sub %>% 
   group_by(Race) %>% 
   summarize(tot_deaths = sum(`Death Cases`),
             tot_population = sum(`Population`),
             overall_rate = round(tot_deaths/ tot_population *1e5,1)) %>% 
   ungroup() %>% 
-  mutate(percent_by_race = round(tot_deaths/sum(tot_deaths)*100, 1),
-         ratio = round(overall_rate/overall_rate[Race =="White"],1)) %>%
+  mutate(ratio = round(overall_rate/overall_rate[Race =="White"],1)) %>%
   kable(col.names = c("Race/ Ethnicity",
                       "HIV-Related Deaths (n)",
-                      "Population (>12 years old)",
-                      "Death Rate (per 100,000)",
-                      "Percent",
-                      "Ratio"))
+                      "Population \n (>12 years old)",
+                      "Death Rate \n (per 100,000)",
+                      "Mortality Rate Ratio"),
+        caption = "<center>HIV-Related Deaths by Race/ Ethnicity, United States, 2020</center>",
+        align = "c") %>%
+  kable_minimal() %>%
+  kable_styling(font_size = 30)%>%
+gsub("font-size: initial !important;",
+"font-size: 30pt !important;",
+.)  %>% 
+  landscape()  
+
+table1
+
+table1 %>%  
+  save_kable(here("results/table1.png"))
+# using white persons as reference group
+```
+
+```{r}
+region_table <- race_sub %>% 
+  group_by(Region, Race) %>% 
+  summarize(tot_deaths = sum(`Death Cases`),
+            tot_population = sum(`Population`),
+            overall_rate = round(tot_deaths/ tot_population *1e5,1)) %>% 
+  ungroup() %>% 
+  group_by(Region) %>% 
+  mutate(ratio = round(overall_rate/overall_rate[Race =="White"],1)) %>%
+  kable(col.names = c("Region",
+                      "Race/ Ethnicity",
+                      "HIV-Related Deaths (n)",
+                      "Population \n (>12 years old)",
+                      "Death Rate \n (per 100,000)",
+                      "Mortality Rate Ratio"),
+        caption = "<center>HIV-Related Deaths by Region, United States, 2020</center>") %>% 
+  kable_minimal() %>%
+  kable_styling(font_size = 30) %>%
+gsub("font-size: initial !important;",
+"font-size: 30pt !important;",.)  %>% 
+  landscape()  
+
+region_table
+
+region_table %>%  
+  save_kable(here("results/region_table.png"))
 # using white persons as reference group
 ```
 
@@ -103,10 +160,18 @@ race_sub %>%
   labs(title = "HIV-Related Death Rate of Black and White Persons, by State, United States, 2020", y = "Rate (per 100,000)", x = "State")
 ggsave(here("results/dr_state.png"), units="in", width=12, height=5, dpi=300)
 
+
+race_sub %>% 
+  ggplot() +
+  geom_boxplot(aes(y = `Death Rate (estimated)`, x = `Region`, group = `Region`)) + theme_classic() + 
+  theme(legend.position = "bottom") +
+  labs(title = "HIV-Related Death Rate of Black and White Persons, by Region, United States, 2020", y = "Rate (per 100,000)", x = "Region") + facet_wrap(.~ Race)
+ggsave(here("results/dr_region.png"), units="in", width=12, height=5, dpi=300)
 ```
 
 Let's move on to
-Bivariate Analysis
+Bivariate Analysis 
+We will deem variables with a correlation coeffiencient of |0.15| as important, and will include these in PCA
 ```{r}
 ggplot(race_sub, aes(y = MRR, x = `Percent Living in Poverty`)) +
   geom_smooth(method = "lm") + 
@@ -114,7 +179,7 @@ ggplot(race_sub, aes(y = MRR, x = `Percent Living in Poverty`)) +
   labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
        Percent Living in Poverty") + 
   stat_cor(method = "pearson") 
-#  pass
+#  pass 
 ggsave(here("results/bi_pov.png"), units="in", width=10, height=7, dpi=300)
 ```
 
@@ -137,8 +202,8 @@ ggplot(race_sub, aes(y = MRR, x = `Gini Coefficient`)) +
   labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
        Gini Coefficient") +
   stat_cor(method = "pearson") 
+#"pass"
 ggsave(here("results/bi_gini.png"), units="in", width=10, height=7, dpi=300)
-# did not "pass"
 ```
 
 ```{r}
@@ -170,6 +235,7 @@ ggplot(race_sub, aes(y = MRR, x = `Percent Without an Internet subscription`)) +
        Percent Without an Internet Subscription") + 
   stat_cor(method="pearson")
 # "pass"
+ggsave(here("results/bi_no_internet.png"), units="in", width=10, height=7, dpi=300)
 ```
 
 ```{r}
@@ -201,7 +267,7 @@ ggplot(race_sub, aes(y = MRR, x = `Median Household Income`)) +
   labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
        Median Household Income") + 
   stat_cor(method="pearson")
-# "pass"
+# did not "pass"
 ```
 
 ```{r}
@@ -211,8 +277,7 @@ ggplot(race_sub, aes(y = MRR, x = `Percentage Diagnosed Late`)) +
   labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
        Percentage Diagnosed Late") + 
   stat_cor(method="pearson")
-# "pass"
-ggsave(here("results/bi_latedx.png"), units="in", width=10, height=7, dpi=300)
+# did not"pass"
 ```
 
 ```{r}
@@ -230,13 +295,11 @@ Now that we have an idea of the relationship between our outcome and potential p
 pos_predictors <- race_sub %>% 
   select(c("State", 
            "Race",
+           "Gini Coefficient",
            "Percent Living in Poverty",
            "Percent Without an Internet subscription",
            "Percent Uninsured Under 65 Years Old",
-           "Percent Living with Food Insecurity",
-           "Percent Living with Severe Housing Cost Burden",
-           "Median Household Income",
-           "Percentage Diagnosed Late"))
+           "Percent Living with Food Insecurity"))
 ```
 
 ```{r}

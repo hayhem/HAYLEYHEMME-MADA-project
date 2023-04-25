@@ -69,7 +69,7 @@ Data on the percentage distribution of children under 14 years old was obtained 
 
 ### Spatial data
 
-Spatial object of the contiguous United States was obtained from library(maps) in R. The list of neighboring contiguous United States was obtained from a public repository on GitHub. https://github.com/ubikuity/List-of-neighboring-states-for-each-US-state
+In order to assess spatial associations, this analysis was limited to the contiguous United States. Spatial object of the contiguous United States was obtained from library(maps) in R and a list of neighboring contiguous United States was obtained from a public repository on GitHub. https://github.com/ubikuity/List-of-neighboring-states-for-each-US-state
 
 ## Data processing
 
@@ -85,53 +85,80 @@ Social Determinants of Health
 
 Predictors used in this analysis were selected to serve as proxy for SDOH. A number of variables were initially considered, but ultimately five predictors were selected: the Gini coefficient was used measure income inequality; percent living in poverty was used to estimate economic stability; percent uninsured under 65 was used to measure health care access; and percent without internet subscription was used to estimate the neighborhood and built environment; and percent living with food insecurity.
 
-## Model Selection
+## Statistical Analysis
 
-The relative goodness of fit of the various models used in this analysis was assessed using the Akaike information criterion (AIC).
+The goal of this analysis was to assess the spatial distribution of the Black-to-White HIV-related MRR. A number of predictors were analyzed using simple linear regression to predict MRR. Variables with a correlation coefficient of \|-0.15\| or more were selected as possible predictors. To address the possibility of multicollinearity between predictors, principal component analysis was then performed on these variable to aid in variable reduction.
+
+Both non-spatial and spatial models were fitted to data as appropriate. Analysis of the full models began with multiple linear regressions model before moving on to models of increasing complexity, such as Poisson regression and the conditional autoregressive (CAR) model. Models that were flexible to continuous data used `MRR` as the primary outcome, while models that required count data used the number of deaths, `Death Cases` , and used `log(Population)` as the offset, and additionally included variables `Race` and `Region` in the models.
+
+Model comparison and relative goodness of fit of the various models used in this analysis was assessed using the Akaike information criterion (AIC).
+
+Moran's *I* was computed to test the null hypothesis of spatial independence.
 
 # Analysis
 
 ## Univariate analysis
 
-Univariate analysis of HIV-related death rate
+Our primary outcome of interest was the Black-to-White HIV-related MRR, which was computed as described above. Table 1 shows the overall number of HIV-related deaths, population size older than 12 years, death rate and the MRR in the United States in 2020. The rate of HIV-related deaths among this Black persons was 7.2 times high than the rate of HIV-related deaths among White persons.
 
-![](images/MRR_hist.png){fig-align="center"}
+![Table 1](images/table1-01.png){fig-align="center" width="600"}
 
-![](images/dr_state.png){fig-align="center"}
+![Figure 1](images/dr_race_bp.png){fig-align="center" width="600"}
 
-![](images/table1.png){fig-align="center"}
+Visual assessment (Figure 1) and Shapiro test were congruent that the distribution of Black-to-White HIV-related MRR in the US in 2020 followed a normal distribution (*p* = 0.63). No normalizing transformation was needed. Below is the histogram of the our primary outcome variable, MRR.
 
-The distribution of death rate was assessed for each race both visually and using the Shapiro test for normality. Based on the Shapiro test, there was insufficient evidence to reject normality with a p-value of 0.63. No normalizing transformation was needed. Below is the histogram of the our primary outcome variable, MRR.
+After verifying that the Black-to-White HIV-related MRR met assumptions of normality, I tested for spatial association of the Black-to-White MRR by computing Moran's *I* (*`I`* `= 0.1507`). For uncorrelated data, the expected value of Moran's *I* was `E(I) = - 0.0213` with a variance `var(I) = 0.0095`. The data showed statistically significant evidence of spatial dependence `(z =1.768; p = 0.039)`. Figure 2 shows a Moran's scatter plot of spatially lagged Black-to-White HIV-related MRR and Black-to-White HIV-related MRR. The positive slope indicates that there is a degree of spatial clustering of the Black-to-White HIV-related MRR.
 
-|     |     |
-|-----|-----|
-|     |     |
-|     |     |
-|     |     |
+![Figure 2](images/moran_mrr.png){fig-align="center"}
 
-```{r}
+Figure 3 and 4 show the raw HIV-related death rate by Race and State.
 
-```
+![Figure 3](images/dr_state-01.png){fig-align="center" width="600"}
 
-*Use a combination of text/tables/figures to explore and describe your data. Show the most important descriptive results here. Additional ones should go in the supplement. Even more can be in the R and Quarto files that are part of your project.*
+![Figure 4](images/raw_rate_map-06.png){fig-align="center"}
 
-## Bivariate Analysis
+Figure 5 compares the raw HIV-related death rate by Race and Region. These plots again show distinct disparities between rate of HIV-related death by race. Additionally, there is evidence of disparities in HIV-related death rate by region for Black persons.
 
-Ultimately
+![Figure 5](images/dr_region.png){fig-align="center" width="600"}
 
-|                                    |                                 |
-|------------------------------------|---------------------------------|
-| ![](images/bi_pov-03.png)          | ![](images/bi_gini-04.png)      |
-| ![](images/bi_unemployed-02.png)   | ![](images/bi_uninsured-01.png) |
-| ![](images/bi_foodinsecure-01.png) |                                 |
+Table 2 shows maps of selected predictors in the United States in 2020. We can see that the `Gini Coefficient` was generally higher in Southern half of the country, indicating a greater degree of income inequality. `Percent Uninsured Under 65 Years Old` was highest in Texas, with the South and non-coastal Western states also appearing to have higher rates of uninsured. `Percent Without an Internet Subscription` was generally low through the United States, however, Wyoming had the highest percent without Internet subscription.
 
-*To get some further insight into your data, if reasonable you could compute simple statistics (e.g. simple models with 1 predictor) to look for associations between your outcome(s) and each individual predictor variable. Though note that unless you pre-specified the outcome and main exposure, any "p\<0.05 means statistical significance" interpretation is not valid.*
+Table 2.
+
+|                             |                               |                                    |
+|-----------------------------|-------------------------------|------------------------------------|
+| ![](images/gini_map-02.png) | ![](images/uninsured_map.png) | ![](images/no_internet_map-01.png) |
+
+## Bivariate Analysis and Principal Component Analysis
+
+To narrow down potential predictors to include in later models, I first started by performing simple linear regression models of MRR vs one of the possible predictors. Variables that had a correlation coefficient of \|0.15\| or more were then selected as possible variables for analysis. These possible predictors were then scaled and principal component analysis (PCA) was performed.
+
+|                                              |                                                 |
+|----------------------------------------------|-------------------------------------------------|
+| ![](images/bi_gini-05.png){width="300"}      |                                                 |
+| ![](images/bi_no_internet.png){width="300"}  | ![](images/bi_pov-04.png){width="300"}          |
+| ![](images/bi_uninsured-02.png){width="300"} | ![](images/bi_foodinsecure-02.png){width="300"} |
+
+Table 2. shows the plot from the bivariate analysis of predictors that were scaled and included in the PCA. Table 3 shows the results of PCA.
+
+|                                          |                                                |
+|------------------------------------------|------------------------------------------------|
+| ![](images/corr_mat-02.png){width="300"} | ![](images/scree_plot-01.png){width="300"}     |
+| ![](images/biplot.png){width="300"}      | ![](images/contribution_plot.png){width="300"} |
+
+Results of the PCA shows that the first three principal components contributed for x % of variation between predictors. The variables that best represent the components were `Gini Coefficient` , `Percent Uninsured Under 65 Years Old`, `Percent Without Internet Subscription` . Ultimately, these variables were included as predictors in the full model.
 
 ## Full analysis
 
-![](images/corr_mat-01.png){fig-align="center"}
+![](images/car_fit_map-01.png){fig-align="center"}
 
-![](images/contriution_plot.png){fig-align="center"}
+![](images/mult_fit_map.png)
+
+|                                 |                                  |
+|---------------------------------|----------------------------------|
+| ![](images/car_pred_map-03.png) | ![](images/mult_pred_map-02.png) |
+
+The CAR model accounting for spatial variation only performed marginally better than the GLM model that did not account for spatial variation.
 
 *Use one or several suitable statistical/machine learning methods to analyze your data and to produce meaningful figures, tables, etc. This might again be code that is best placed in one or several separate R scripts that need to be well documented. You want the code to produce figures and data ready for display as tables, and save those. Then you load them here.*
 

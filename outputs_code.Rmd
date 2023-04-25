@@ -1,7 +1,7 @@
 #Table
 library(kableExtra)
 ```{r}
-df <- readRDS(here("data/processed_data/race_new.rds"))
+df <- readRDS(here("data/processed_data/race_alt.rds"))
 
 df %>% 
   group_by(Race) %>% 
@@ -15,7 +15,7 @@ df %>%
                       "Population \n (>12 years old)",
                       "Death Rate \n (per 100,000)",
                       "Mortality Rate Ratio"),
-        caption = "HIV-Related Deaths Summary by Race/ Ethnicity, United States, 2020",
+        caption = "<center>HIV-Related Deaths by Race/ Ethnicity, United States, 2020</center>",
         align = "c") %>%
   kable_minimal() %>%
   kable_styling(font_size = 30)%>%

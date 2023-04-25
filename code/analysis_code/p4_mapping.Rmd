@@ -12,7 +12,6 @@ states <- map_data("state")
 
 df_scaled <- readRDS(here("data/processed_data/df_fit_alt.rds"))
 df_raw <- readRDS(here("data/processed_data/race_alt.rds"))
-mod_aic <-  readRDS(here("data/processed_data/aic_alt.rds"))
 ```
 
 
@@ -21,27 +20,27 @@ I do a bit more cleaning to the data to tidy things up and create some new varia
 df_scaled <- df_scaled %>%
   mutate(region = tolower(State)) %>% 
   replace(is.na("Ratio Observed/ Expected"), 0) %>% 
-  mutate(Exp_DR = Exp_Deaths/Population *1e5,
+  mutate(Exp_DR = `Expected Death Cases`/Population *1e5,
                OE_mortality_ratio = `Death Rate (estimated)`/Exp_DR,
-         dykes_chi = ((`Death Cases`- Exp_Deaths)/ sqrt(Exp_Deaths)),
+         dykes_chi = ((`Death Cases`- `Expected Death Cases`)/ sqrt(`Expected Death Cases`)),
          
          ## GLM
-         predicted_observed_mult = mult_fit/`Death Cases`,
+         predicted_observed_mult = mult_fit/`MRR`,
          predicted_observed_mult = ifelse(!is.finite(predicted_observed_mult), 0, predicted_observed_mult),
          observed_predicted_mult = `Death Cases`/mult_fit,
          observed_predicted_mult = ifelse(!is.finite(observed_predicted_mult), 0, observed_predicted_mult),
          ## CAR
-         predicted_observed_car = car_fit/`Death Cases`,
+         predicted_observed_car = car_fit/`MRR`,
          predicted_observed_car = ifelse(!is.finite(predicted_observed_car), 0, predicted_observed_car),
          observed_predicted_car = `Death Cases`/car_fit,
          observed_predicted_car = ifelse(!is.finite(observed_predicted_car), 0, observed_predicted_car),
          ## POISSON
-         predicted_observed_pois = pois_fit/`Death Cases`,
+         predicted_observed_pois = pois_fit/`MRR`,
          predicted_observed_pois = ifelse(!is.finite(predicted_observed_pois), 0, predicted_observed_pois),
          observed_predicted_pois = `Death Cases`/pois_fit,
          observed_predicted_pois = ifelse(!is.finite(observed_predicted_pois), 0, observed_predicted_pois),
          ##N NEGATIVE BINOMIAL
-         predicted_observed_nb = nb_fit/`Death Cases`,
+         predicted_observed_nb = nb_fit/`MRR`,
          predicted_observed_nb = ifelse(!is.finite(predicted_observed_nb), 0, predicted_observed_nb),
          observed_predicted_nb = `Death Cases`/nb_fit,
          observed_predicted_nb = ifelse(!is.finite(observed_predicted_nb), 0, observed_predicted_nb))
@@ -83,7 +82,7 @@ ggplot(df_sf_scale, aes(long, lat)) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5) + theme_void() + 
   theme(strip.text = element_text(size = 14),
         legend.position = "bottom") +
-  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio in the United States, 2020", x = "", y = "", fill = "Death rate per 100,000") +
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio in the United States, 2020", x = "", y = "", fill = "Ratio") +
   scale_fill_distiller(palette = "RdYlGn") +
   theme(plot.title= element_text(hjust = 0.5))
 
@@ -103,17 +102,6 @@ ggsave(here("results/gini_map.png"), units="in", width=10, height=7, dpi=300)
 
 ```{r}
 ggplot(df_sf_raw, aes(long, lat)) +
-  geom_polygon(aes(group = group, fill =`Percent Living in Poverty`)) +
-  coord_map("albers",  lat0 = 45.5, lat1 = 29.5)   + theme_void() + 
-  theme(strip.text = element_text(size = 14),
-        legend.position = "bottom") +
-  labs(title = "Percent Living in Poverty, 2020", x = "", y = "", fill = "%") +
-  theme(plot.title= element_text(hjust = 0.5)) 
-ggsave(here("results/poverty_map.png"), units="in", width=10, height=7, dpi=300)
-```
-
-```{r}
-ggplot(df_sf_raw, aes(long, lat)) +
   geom_polygon(aes(group = group, fill =`Percent Uninsured Under 65 Years Old`)) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5)   + theme_void() + 
   theme(strip.text = element_text(size = 14),
@@ -123,27 +111,6 @@ ggplot(df_sf_raw, aes(long, lat)) +
 ggsave(here("results/uninsured_map.png"), units="in", width=10, height=7, dpi=300)
 ```
 
-```{r}
-ggplot(df_sf_raw, aes(long, lat)) +
-  geom_polygon(aes(group = group, fill =`Percent Living with Severe Housing Cost Burden`)) +
-  coord_map("albers",  lat0 = 45.5, lat1 = 29.5)   + theme_void() + 
-  theme(strip.text = element_text(size = 14),
-        legend.position = "bottom") +
-  labs(title = "Percent Living with Severe Housing Cost Burden 2020", x = "", y = "", fill = "%") +
-  theme(plot.title= element_text(hjust = 0.5)) 
-ggsave(here("results/housing_map.png"), units="in", width=10, height=7, dpi=300)
-```
-
-```{r}
-ggplot(df_sf_raw, aes(long, lat)) +
-  geom_polygon(aes(group = group, fill =`Percent Living with Food Insecurity`)) +
-  coord_map("albers",  lat0 = 45.5, lat1 = 29.5)   + theme_void() + 
-  theme(strip.text = element_text(size = 14),
-        legend.position = "bottom") +
-  labs(title = "Percent Living with Food Insecurity, 2020", x = "", y = "", fill = "%") +
-  theme(plot.title= element_text(hjust = 0.5)) 
-ggsave(here("results/foodinsecure_map.png"), units="in", width=10, height=7, dpi=300)
-```
 
 ```{r}
 ggplot(df_sf_raw, aes(long, lat)) +
@@ -156,16 +123,6 @@ ggplot(df_sf_raw, aes(long, lat)) +
 ggsave(here("results/no_internet_map.png"), units="in", width=10, height=7, dpi=300)
 ```
 
-```{r}
-ggplot(df_sf_raw, aes(long, lat)) +
-  geom_polygon(aes(group = group, fill =`Percent Unemployed` )) +
-  coord_map("albers",  lat0 = 45.5, lat1 = 29.5)   + theme_void() + 
-  theme(strip.text = element_text(size = 14),
-        legend.position = "bottom") +
-  labs(title = "Percent Unemployed, 2020", x = "", y = "", fill = "%") +
-  theme(plot.title= element_text(hjust = 0.5)) 
-ggsave(here("results/unemployed_map.png"), units="in", width=10, height=7, dpi=300)
-```
 The map for HIV-related death differs drastically across the United States by race/ethnicity. In most states, the highest HIV-related death were among Black person. This is especially true in the South region. Non-coastal western states consistently had lowest rates HIV-related deaths across the selected racial/ethnic groups, expect among multi-racial non-Hispanic persons. Non-Hispanic White persons were the only of the selected racial/ ethnic group that did not have a HIV-related death rate higher than ~10 per 100,000.
 `
 
@@ -183,10 +140,9 @@ ggplot(df_sf_scale, aes(long, lat)) +
         axis.text = element_blank(),
         legend.position = "bottom") +
   labs(title = "NULL - Expected HIV Mortality Rate by Race/ Ethnicity
-       in the United States, 2020", x = "", y = "", fill = "Rate") +
+       in the United States, 2020", x = "", y = "", fill = "Death Rate (per 100,000)") +
   theme(plot.title= element_text(hjust = 0.5))
 ```
-
 
 Next, let's using Dykes and Unwin's method of smooth map using a chi square value. 
 ```{r}
@@ -213,7 +169,7 @@ Dykes and Unwin (Dykes and Unwin 2001) technique  has the effect of creating a d
 
 
 ```{r}
-##Smoothed map using fitted values from best models.
+##Smoothed map using fitted values from best model (CAR)
 ggplot(df_sf_scale, aes(long, lat)) +
   geom_polygon(aes(group = group, fill = car_fit)) +
   scale_fill_gradientn(colors = rev(brewer.pal(9, "RdYlGn"))) +
@@ -221,11 +177,29 @@ ggplot(df_sf_scale, aes(long, lat)) +
   theme_void() + 
   theme(strip.text = element_text(size = 14),
         legend.position = "bottom") +
-  labs(title = "Smoothed Map (Fitted) of HIV-Related Death Rate by Race/ Ethnicity in the United States, 2020", x = "", y = "", fill = "") +
+  labs(title = "Smoothed Map of Black-to-White HIV-Related Mortality Rate Ratio,
+United States, 2020 (CAR)", x = "Ratio", y = "", fill = "") +
   theme(plot.title= element_text(hjust = 0.5))
 
 
-ggsave(here("results/fitted_map.png"), units="in", width=10, height=4, dpi=300)
+ggsave(here("results/car_fit_map.png"), units="in", width=10, height=4, dpi=300)
+``` 
+
+```{r}
+##Smoothed map using fitted values from MULT (only marginally worse than CAR)
+ggplot(df_sf_scale, aes(long, lat)) +
+  geom_polygon(aes(group = group, fill = mult_fit)) +
+  scale_fill_gradientn(colors = rev(brewer.pal(9, "RdYlGn"))) +
+  coord_map("albers",  lat0 = 45.5, lat1 = 29.5)  + 
+  theme_void() + 
+  theme(strip.text = element_text(size = 14),
+        legend.position = "bottom") +
+  labs(title = "Smoothed Map of Black-to-White HIV-Related Mortality Rate Ratio,
+United States, 2020 (GLM)", x = "Ratio ", y = "", fill = "") +
+  theme(plot.title= element_text(hjust = 0.5))
+
+
+ggsave(here("results/mult_fit_map.png"), units="in", width=10, height=4, dpi=300)
 ``` 
 
 Next, let's look at the map for the ratio of predicted to observed (P/O) values. 
@@ -233,24 +207,27 @@ Next, let's look at the map for the ratio of predicted to observed (P/O) values.
 ggplot(df_sf_scale, aes(long, lat)) +
   geom_polygon(aes(group = group, fill = predicted_observed_mult)) +
   scale_fill_gradientn(colors = rev(brewer.pal(9, "RdYlGn"))) +
-  coord_map("albers",  lat0 = 45.5, lat1 = 29.5) +
-  facet_wrap(. ~ Race)  + 
+  coord_map("albers",  lat0 = 45.5, lat1 = 29.5)   + 
   theme_void() + 
   theme(strip.text = element_text(size = 14),
         legend.position = "bottom") +
-  labs(title = "Map of Ratio of Predicted to Observed Cases (GLM) by Race/ Ethnicity in the United States, 2020", x = "", y = "", fill = "Ratio") +
+  labs(title = "Map of Predicted Over Observed Black-to-White HIV-Related Mortality Rate Ratio,
+United States, 2020 (GLM)", x = "", y = "", fill = "Ratio") +
   theme(plot.title= element_text(hjust = 0.5))
+ggsave(here("results/mult_pred_map.png"), units="in", width=7, height=4, dpi=300)
+
 
 ggplot(df_sf_scale, aes(long, lat)) +
   geom_polygon(aes(group = group, fill = predicted_observed_car)) +
   scale_fill_gradientn(colors = rev(brewer.pal(9, "RdYlGn"))) +
-  coord_map("albers",  lat0 = 45.5, lat1 = 29.5) +
-  facet_wrap(. ~ Race)  + 
+  coord_map("albers",  lat0 = 45.5, lat1 = 29.5) + 
   theme_void() + 
   theme(strip.text = element_text(size = 14),
         legend.position = "bottom") +
-  labs(title = "Map of Ratio of Predicted to Observed Cases (CAR) by Race/ Ethnicity in the United States, 2020", x = "", y = "", fill = "Ratio") +
+  labs(title = "Map of Predicted Over Observed Black-to-White HIV-Related Mortality Rate Ratio,
+United States, 2020 (CAR)", x = "", y = "", fill = "Ratio") +
   theme(plot.title= element_text(hjust = 0.5))
+ggsave(here("results/car_pred_map.png"), units="in", width=7, height=4, dpi=300)
 ``` 
 We can see that the model fitted pretty well. A higher P/O ratio (more red values) indicates that the model overestimated the observed values, while a lower P/O ratio (more green values) indicates that the model underestimates the observed values. We can see that the model underestimated rates primarily in the non-coast north-western states and north central states for persons of Hispanic, non-Hispanic White, and non-Hispanic multiple racial/ ethnic backgrounds.
 
