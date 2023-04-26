@@ -173,14 +173,14 @@ Let's move on to
 Bivariate Analysis 
 We will deem variables with a correlation coeffiencient of |0.15| as important, and will include these in PCA
 ```{r}
-ggplot(race_sub, aes(y = MRR, x = `Percent Living in Poverty`)) +
+bi_1 <- ggplot(race_sub, aes(y = MRR, x = `Percent Living in Poverty`)) +
   geom_smooth(method = "lm") + 
   geom_point() + 
-  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
-       Percent Living in Poverty") + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR)
+  vs. Percent Living in Poverty") + 
   stat_cor(method = "pearson") 
 #  pass 
-ggsave(here("results/bi_pov.png"), units="in", width=10, height=7, dpi=300)
+#ggsave(here("results/bi_pov.png"), units="in", width=10, height=7, dpi=300)
 ```
 
 
@@ -188,10 +188,9 @@ ggsave(here("results/bi_pov.png"), units="in", width=10, height=7, dpi=300)
 ggplot(race_sub, aes(y = MRR, x = `Percent Unemployed`)) +
   geom_smooth(method = "lm") +
   geom_point() + 
-  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
-       Percent Unemployed") + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR)
+  vs. Percent Unemployed") + 
   stat_cor(method = "pearson") 
-ggsave(here("results/bi_unemployed.png"), units="in", width=10, height=7, dpi=300)
 #  did not pass 
 ```
 
@@ -199,11 +198,11 @@ ggsave(here("results/bi_unemployed.png"), units="in", width=10, height=7, dpi=30
 ggplot(race_sub, aes(y = MRR, x = `Gini Coefficient`)) +
     geom_smooth(method = "lm") +
   geom_point() + 
-  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
-       Gini Coefficient") +
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR)
+  vs. Gini Coefficient") +
   stat_cor(method = "pearson") 
-#"pass"
-ggsave(here("results/bi_gini.png"), units="in", width=10, height=7, dpi=300)
+# did not "pass"
+#ggsave(here("results/bi_gini.png"), units="in", width=10, height=7, dpi=300)
 ```
 
 ```{r}
@@ -224,82 +223,91 @@ ggplot(race_sub, aes(y = MRR, x = `Percent Living with Severe Housing Cost Burde
        Percent Living with Severe Housing Cost Burden") + 
   stat_cor(method="pearson")
 #  did not pass
-ggsave(here("results/bi_housing.png"), units="in", width=10, height=7, dpi=300)
+#ggsave(here("results/bi_housing.png"), units="in", width=10, height=7, dpi=300)
 ```
 
 ```{r}
-ggplot(race_sub, aes(y = MRR, x = `Percent Without an Internet subscription`)) +
+bi_3 <- ggplot(race_sub, aes(y = MRR, x = `Percent Without an Internet subscription`)) +
   geom_smooth(method = "lm") +
   geom_point() + 
-  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
-       Percent Without an Internet Subscription") + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR)
+  vs.  Percent Without an Internet Subscription") + 
   stat_cor(method="pearson")
 # "pass"
-ggsave(here("results/bi_no_internet.png"), units="in", width=10, height=7, dpi=300)
+#ggsave(here("results/bi_no_internet.png"), units="in", width=10, height=7, dpi=300)
 ```
 
 ```{r}
-ggplot(race_sub, aes(y = MRR, x = `Percent Uninsured Under 65 Years Old`)) +
+bi_4 <- ggplot(race_sub, aes(y = MRR, x = `Percent Uninsured Under 65 Years Old`)) +
   geom_smooth(method = "lm") +
   geom_point() + 
-  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
-       Percent Uninsured Under 65 Years Old") + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) 
+  vs.  Percent Uninsured Under 65 Years Old") + 
   stat_cor(method="pearson")
 # "pass"
-ggsave(here("results/bi_uninsured.png"), units="in", width=10, height=7, dpi=300)
+#ggsave(here("results/bi_uninsured.png"), units="in", width=10, height=7, dpi=300)
 ```
 
 ```{r}
-ggplot(race_sub, aes(y = MRR, x = `Percent Living with Food Insecurity`)) +
+bi_5 <- ggplot(race_sub, aes(y = MRR, x = `Percent Living with Food Insecurity`)) +
   geom_smooth(method = "lm") +
   geom_point() + 
-  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
-       Percent Living with Food Insecurity") + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR)
+  vs. Percent Living with Food Insecurity") + 
   stat_cor(method="pearson")
 # pass"
-ggsave(here("results/bi_foodinsecure.png"), units="in", width=10, height=7, dpi=300)
+#ggsave(here("results/bi_foodinsecure.png"), units="in", width=10, height=7, dpi=300)
 ```
 
 ```{r}
-ggplot(race_sub, aes(y = MRR, x = `Median Household Income`)) +
+bi_2 <- ggplot(race_sub, aes(y = MRR, x = `Median Household Income`)) +
   geom_smooth(method = "lm") +
   geom_point() + 
-  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
-       Median Household Income") + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR)
+  vs. Median Household Income") + 
   stat_cor(method="pearson")
 # did not "pass"
 ```
 
 ```{r}
-ggplot(race_sub, aes(y = MRR, x = `Percentage Diagnosed Late`)) +
+bi_6 <-ggplot(race_sub, aes(y = MRR, x = `Percentage Diagnosed Late`)) +
   geom_smooth(method = "lm") +
   geom_point() + 
-  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
-       Percentage Diagnosed Late") + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR)
+  vs.  Percentage Diagnosed Late") + 
   stat_cor(method="pearson")
-# did not"pass"
+# "pass"
 ```
 
 ```{r}
 ggplot(race_sub, aes(y = MRR, x = `Percentage Virally Suppressed`)) +
   geom_smooth(method = "lm") +
   geom_point() + 
-  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) vs.
-       Percentage Virally Suppressed") + 
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio (MRR) 
+  vs.    Percentage Virally Suppressed") + 
   stat_cor(method="pearson")
 #did not pass
 ```
+
+```{r}
+library(gridExtra)
+bi_g <- grid.arrange(bi_1, bi_2, bi_4, bi_5, bi_3, bi_6, ncol = 2, nrow = 3)
+
+ggsave(here("results/grid_bivar.png"), bi_g, units="in", width=10, height=10, dpi=300) 
+```
+
 Now that we have an idea of the relationship between our outcome and potential predictors, next I need to account for the fact that these variables a likely have some degree of multicollinearity. In the next step we will be using PCA to scale our predictors. 
 
 ```{r}
 pos_predictors <- race_sub %>% 
   select(c("State", 
            "Race",
-           "Gini Coefficient",
+           "Median Household Income",
            "Percent Living in Poverty",
            "Percent Without an Internet subscription",
            "Percent Uninsured Under 65 Years Old",
-           "Percent Living with Food Insecurity"))
+           "Percent Living with Food Insecurity",
+           "Percentage Diagnosed Late"))
 ```
 
 ```{r}

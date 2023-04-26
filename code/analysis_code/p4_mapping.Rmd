@@ -90,38 +90,60 @@ ggsave(here("results/mrr_map.png"), units="in", width=10, height=4, dpi=300)
 ```
 
 ```{r}
-ggplot(df_sf_raw, aes(long, lat)) +
-  geom_polygon(aes(group = group, fill =`Gini Coefficient`)) +
+map_1 <- ggplot(df_sf_raw, aes(long, lat)) +
+  geom_polygon(aes(group = group, fill =`Percent Living in Poverty`)) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5) + theme_void() + 
   theme(strip.text = element_text(size = 14),
         legend.position = "bottom") +
-  labs(title = "Gini Coefficient, 2020", x = "", y = "", fill = "Gini coefficient (higher values represent greater income inequality)")  +
+  labs(title = "Percent Living in Poverty, 2020", x = "", y = "", fill = "Percent")  +
   theme(plot.title= element_text(hjust = 0.5))
-ggsave(here("results/gini_map.png"), units="in", width=10, height=7, dpi=300)
+
 ```
 
 ```{r}
-ggplot(df_sf_raw, aes(long, lat)) +
+map_2 <- 
+  
+  ggplot(df_sf_raw, aes(long, lat)) +
+  geom_polygon(aes(group = group, fill =`Median Household Income`/1e4)) +
+  coord_map("albers",  lat0 = 45.5, lat1 = 29.5) + theme_void() + 
+  theme(strip.text = element_text(size = 14),
+        legend.position = "bottom") +
+  labs(title = "Median Household Income, 2020", x = "", y = "", fill = "Per $10,000")  +
+  theme(plot.title= element_text(hjust = 0.5))
+
+
+```
+
+```{r}
+map_3 <- ggplot(df_sf_raw, aes(long, lat)) +
   geom_polygon(aes(group = group, fill =`Percent Uninsured Under 65 Years Old`)) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5)   + theme_void() + 
   theme(strip.text = element_text(size = 14),
         legend.position = "bottom") +
-  labs(title = "Percent Uninsured Under 65 Years Old, 2020", x = "", y = "", fill = "%") +
+  labs(title = "Percent Uninsured Under 65 Years Old, 2020", x = "", y = "", fill = "Percent") +
   theme(plot.title= element_text(hjust = 0.5)) 
-ggsave(here("results/uninsured_map.png"), units="in", width=10, height=7, dpi=300)
+
 ```
 
 
 ```{r}
-ggplot(df_sf_raw, aes(long, lat)) +
+map_4 <- ggplot(df_sf_raw, aes(long, lat)) +
   geom_polygon(aes(group = group, fill =`Percent Without an Internet subscription`)) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5)   + theme_void() + 
   theme(strip.text = element_text(size = 14),
         legend.position = "bottom") +
-  labs(title = "Percent Without an Internet Subscription, 2020", x = "", y = "", fill = "%") +
+  labs(title = "Percent Without an Internet Subscription, 2020", x = "", y = "", fill = "Percent") +
   theme(plot.title= element_text(hjust = 0.5)) 
-ggsave(here("results/no_internet_map.png"), units="in", width=10, height=7, dpi=300)
+
 ```
+
+```{r}
+library(gridExtra)
+grid_map<- grid.arrange(map_2, map_1, map_3, map_4, ncol = 2, nrow = 2)
+
+ggsave(here("results/grid_map.png"), grid_map, units="in", width=11, height=10, dpi=300)
+```
+
 
 The map for HIV-related death differs drastically across the United States by race/ethnicity. In most states, the highest HIV-related death were among Black person. This is especially true in the South region. Non-coastal western states consistently had lowest rates HIV-related deaths across the selected racial/ethnic groups, expect among multi-racial non-Hispanic persons. Non-Hispanic White persons were the only of the selected racial/ ethnic group that did not have a HIV-related death rate higher than ~10 per 100,000.
 `
@@ -204,31 +226,36 @@ ggsave(here("results/mult_fit_map.png"), units="in", width=10, height=4, dpi=300
 
 Next, let's look at the map for the ratio of predicted to observed (P/O) values. 
 ```{r}
-ggplot(df_sf_scale, aes(long, lat)) +
+pred_mult <- ggplot(df_sf_scale, aes(long, lat)) +
   geom_polygon(aes(group = group, fill = predicted_observed_mult)) +
   scale_fill_gradientn(colors = rev(brewer.pal(9, "RdYlGn"))) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5)   + 
   theme_void() + 
   theme(strip.text = element_text(size = 14),
         legend.position = "bottom") +
-  labs(title = "Map of Predicted Over Observed Black-to-White HIV-Related Mortality Rate Ratio,
+  labs(title = "Predicted Over Observed
+Black-to-White HIV-Related MRR,
 United States, 2020 (GLM)", x = "", y = "", fill = "Ratio") +
   theme(plot.title= element_text(hjust = 0.5))
-ggsave(here("results/mult_pred_map.png"), units="in", width=7, height=4, dpi=300)
 
-
-ggplot(df_sf_scale, aes(long, lat)) +
+pred_car <-ggplot(df_sf_scale, aes(long, lat)) +
   geom_polygon(aes(group = group, fill = predicted_observed_car)) +
   scale_fill_gradientn(colors = rev(brewer.pal(9, "RdYlGn"))) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5) + 
   theme_void() + 
   theme(strip.text = element_text(size = 14),
         legend.position = "bottom") +
-  labs(title = "Map of Predicted Over Observed Black-to-White HIV-Related Mortality Rate Ratio,
+  labs(title = "Predicted Over Observed
+Black-to-White HIV-Related MRR,
 United States, 2020 (CAR)", x = "", y = "", fill = "Ratio") +
   theme(plot.title= element_text(hjust = 0.5))
-ggsave(here("results/car_pred_map.png"), units="in", width=7, height=4, dpi=300)
-``` 
+```
+
+```{r}
+grid_pred <- grid.arrange(pred_car, pred_mult, ncol = 2, nrow = 1)
+
+ggsave(here("results/grid_pred.png"), grid_pred, units="in", width=10, height=5, dpi=300)
+```
 We can see that the model fitted pretty well. A higher P/O ratio (more red values) indicates that the model overestimated the observed values, while a lower P/O ratio (more green values) indicates that the model underestimates the observed values. We can see that the model underestimated rates primarily in the non-coast north-western states and north central states for persons of Hispanic, non-Hispanic White, and non-Hispanic multiple racial/ ethnic backgrounds.
 
 

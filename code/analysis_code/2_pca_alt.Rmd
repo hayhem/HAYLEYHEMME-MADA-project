@@ -34,8 +34,8 @@ corr_matrix <- pos_predictors_scaled %>%
     cor()
 
   #setting up correlation matrix 
-print(ggcorrplot(corr_matrix))
-ggsave(here("results/corr_mat.png"), units="in", width=10, height=7, dpi=300)
+pca_1 <-print(ggcorrplot(corr_matrix))
+#ggsave(here("results/corr_mat.png"), units="in", width=10, height=7, dpi=300)
 ```
 
 ```{r}
@@ -47,26 +47,33 @@ print(summary(pca))
 print(pca$loadings[, 1:3])
 
 #Scree plot
-print(fviz_eig(pca, addlabels = TRUE))
-ggsave(here("results/scree_plot.png"), units="in", width=10, height=7, dpi=300)
+pca_2 <-print(fviz_eig(pca, addlabels = TRUE))
+#ggsave(here("results/scree_plot.png"), units="in", width=10, height=7, dpi=300)
 ```
 Since we originally had 5 variables, we should only look at components that explain more than 20% of variation. This is includes components 1 through 3. All other principal components explains less that 8.9% of variation, so they will excluded. 
 
 ```{r}
 #Contribution of each variable 
-print(fviz_cos2(pca, choice = "var", axes = 1:2))
-ggsave(here("results/contribution_plot.png"), units="in", width=10, height=7, dpi=300)
+pca_3 <-print(fviz_cos2(pca, choice = "var", axes = 1:2))
+#ggsave(here("results/contribution_plot.png"), units="in", width=10, height=7, dpi=300)
 
 # Biplot of the attributes
-print(fviz_pca_var(pca, col.var = "cos2",
+pca_4 <- print(fviz_pca_var(pca, col.var = "cos2",
                    gradient.cols = c("darkblue", "orange", "green"),
                    repel = TRUE, title = "PCA"
                    ))
-ggsave(here("results/biplot.png"), units="in", width=10, height=7, dpi=300)
+#ggsave(here("results/biplot.png"), units="in", width=10, height=7, dpi=300)
 # Variables in green are a good representation of the variable on that component.
 
 #Creating object to store scaled dataframes
 df_scaled <- full_join(df_response, pos_predictors_scaled, by = join_by("State", "Race"))
+```
+
+```{r}
+library(gridExtra)
+grid_pca <- grid.arrange(pca_1, pca_2, pca_3, pca_4, ncol = 2, nrow = 2)
+
+ggsave(here("results/grid_pca.png"), grid_pca, units="in", width=10, height=10, dpi=300)
 ```
 
 

@@ -40,11 +40,10 @@ Setting up functions for models
  #multiple linear regression
 mult_function <- function(df) {
   mult_race <- glm(MRR ~ 
-                       # `Percent Living in Poverty` +
-                        `Gini Coefficient` + 
+                        `Median Household Income` +
+                        `Percent Living in Poverty` +
                         `Percent Without an Internet subscription` +
-                        `Percent Uninsured Under 65 Years Old`,
-                      #  `Percent Living with Food Insecurity`,
+                        `Percent Living with Food Insecurity`,
                      data = df,
                      family = "gaussian")
   print(summary(mult_race))
@@ -56,11 +55,10 @@ return(df)
 ## function to fit GLM and pull AIC
 mult_aic <- function(df) {
   mult_race <- glm(MRR ~ 
-                       # `Percent Living in Poverty` +
-                        `Gini Coefficient` + 
+                        `Median Household Income` +
+                        `Percent Living in Poverty` +
                         `Percent Without an Internet subscription` +
-                        `Percent Uninsured Under 65 Years Old`,
-                      #  `Percent Living with Food Insecurity`,
+                        `Percent Living with Food Insecurity`,
                      data = df,
                      family = "gaussian")
 aic <- AIC(mult_race)
@@ -80,11 +78,10 @@ df_mult <- mult_aic(df)
 pois_function <- function(df) {
 
 pois_race <- glm(`Death Cases` ~ Race + region +
-                       # `Percent Living in Poverty` +
-                        `Gini Coefficient` + 
+                        `Median Household Income` +
+                        `Percent Living in Poverty` +
                         `Percent Without an Internet subscription` +
-                        `Percent Uninsured Under 65 Years Old` +
-                      #  `Percent Living with Food Insecurity`  +
+                        `Percent Living with Food Insecurity`  +
                      offset(log(`Population`)),
                      data = df,
                      family = poisson(link = "log"))
@@ -100,11 +97,10 @@ return(df)
 ## function to fit GLM and pull AIC
 pois_aic <- function(df) {
   pois_race <- glm(`Death Cases` ~  Race + region +
-                       # `Percent Living in Poverty` +
-                        `Gini Coefficient` + 
+                        `Median Household Income` +
+                        `Percent Living in Poverty` +
                         `Percent Without an Internet subscription` +
-                        `Percent Uninsured Under 65 Years Old` +
-                      #  `Percent Living with Food Insecurity`  +
+                        `Percent Living with Food Insecurity`  +
                      offset(log(`Population`)),
                      data = df,
                      family = poisson(link = "log"))
@@ -124,11 +120,10 @@ df_pois <- pois_aic(df)
   #Negative binomial
 nb_function  <- function(df) {
   neg_bin_race <- glm.nb(`Death Cases` ~ Race + region +
-                       # `Percent Living in Poverty` +
-                        `Gini Coefficient` + 
+                        `Median Household Income` +
+                        `Percent Living in Poverty` +
                         `Percent Without an Internet subscription` +
-                        `Percent Uninsured Under 65 Years Old` +
-                      #  `Percent Living with Food Insecurity`  +
+                        `Percent Living with Food Insecurity` +
                      offset(log(`Population`)),
                             data = df)
   print(summary(neg_bin_race))
@@ -143,11 +138,10 @@ return(df)
 ## function to fit GLM and pull AIC
 nb_aic <- function(df) {
   neg_bin_race <- glm.nb(`Death Cases` ~ Race + region +
-                       # `Percent Living in Poverty` +
-                        `Gini Coefficient` + 
+                        `Median Household Income` +
+                        `Percent Living in Poverty` +
                         `Percent Without an Internet subscription` +
-                        `Percent Uninsured Under 65 Years Old` +
-                      #  `Percent Living with Food Insecurity`  +
+                        `Percent Living with Food Insecurity` +
                      offset(log(`Population`)),
                             data = df)
 aic <- AIC(neg_bin_race)
@@ -173,11 +167,10 @@ car_function <- function(df) {
   nablist_race_df <- mat2listw(h_race_df, style = "W")
   
   car_race <- spautolm(MRR ~                      
-                       # `Percent Living in Poverty` +
-                        `Gini Coefficient` + 
+                        `Median Household Income` +
+                        `Percent Living in Poverty` +
                         `Percent Without an Internet subscription` +
-                        `Percent Uninsured Under 65 Years Old`,
-                      #  `Percent Living with Food Insecurity`,
+                        `Percent Living with Food Insecurity`,
                            data = df,
                            listw = nablist_race_df,
                            family = "CAR")
@@ -198,11 +191,10 @@ car_aic <- function(df) {
   nablist_race_df <- mat2listw(h_race_df, style = "W")
   
   car_race <- spautolm(MRR ~                      
-                       # `Percent Living in Poverty` +
-                        `Gini Coefficient` + 
+                        `Median Household Income` +
+                        `Percent Living in Poverty` +
                         `Percent Without an Internet subscription` +
-                        `Percent Uninsured Under 65 Years Old`,
-                      #  `Percent Living with Food Insecurity`,
+                        `Percent Living with Food Insecurity`,
                            data = df,
                            listw = nablist_race_df,
                            family = "CAR")
@@ -265,7 +257,7 @@ spacy_function <- function(df) {
   moran.plot(df$MRR, nablist_race_df, zero.policy = TRUE)
   
   # calculate and print LISA statistics
-  lisa_race <- localmoran(df$MRR, nablist_race_df)
+  lisa_race <- localmoran(df$MRR, nablist_race_df, zero.policy=TRUE)
   summary(lisa_race[,1])
 }
 ```

@@ -25,7 +25,7 @@ library(kableExtra)
 
 # Summary/Abstract
 
-This project aims to identify factors associated with racial disparities in HIV-related death rates in the United States. To assess this, we look at the ratio of Black-to-White HIV-related mortality rate (MRR) from 2020 in the United States. Additionally, we assess whether social determinants of health (SDOH) can explain variation in MMR at the state-level and regional-level. Both spatial and non-spatial methods were used.
+This project aims to identify factors associated with racial disparities in HIV-related death rates in the United States. To assess this, we look at the ratio of Black-to-White HIV-related mortality rate (MRR) from 2020 in the United States. Additionally, we assess whether social determinants of health (SDOH) can explain variation in MRR at the state-level and regional-level. Both spatial and non-spatial methods were used.
 
 {{< pagebreak >}}
 
@@ -43,7 +43,7 @@ Ha : There is a spatial correlation between Black-to-White HIV-related MRR and S
 
 # Background Information
 
-Since the emergence of the HIV epidemic in 1981 in the United States, more than 1.2 million people in the United States have been diagnosed with HIV, resulting in more than 700,000 HIV-related deaths \cite{jun07HIVAIDSEpidemic2021}. Medical advancements have led to effective antiretroviral therapies that not only treat HIV infection and reduce adverse HIV-related health outcomes, such as progression to AIDS, but have also led to use of these medications to prevent infection before and after potential exposure for people who are HIV negative Even still, more than 30,000 people in the United States continue to be diagnosed each year \cite{jun07HIVAIDSEpidemic2021}. While the Ending the Epidemic initiative set up a goal of 90% reduction in new HIV infections by 2030 by upscaling efforts in HIV diagnoses treatment, and prevention, this is followed by nearly one decade of steady HIV diagnoses rates. Developing targeted intervention programs is essential to achieve this goal. To accomplish this, we need to gain a deeper understanding of the impact or contribution of complex factors such as social determinants of health or other barriers to poor HIV-related outcomes and disparities.
+Since the emergence of the HIV epidemic in 1981 in the United States, more than 1.2 million people in the United States have been diagnosed with HIV, resulting in more than 700,000 HIV-related deaths [@jun07HIVAIDSEpidemic2021]. Medical advancements have led to effective antiretroviral therapies that not only treat HIV infection and reduce adverse HIV-related health outcomes, such as progression to AIDS, but have also led to use of these medications to prevent infection before and after potential exposure for people who are HIV negative Even still, more than 30,000 people in the United States continue to be diagnosed each year [@jun07HIVAIDSEpidemic2021]. While the Ending the Epidemic initiative set up a goal of 90% reduction in new HIV infections by 2030 by upscaling efforts in HIV diagnoses treatment, and prevention, this is followed by nearly one decade of steady HIV diagnoses rates. Developing targeted intervention programs is essential to achieve this goal. To accomplish this, we need to gain a deeper understanding of the impact or contribution of complex factors such as social determinants of health or other barriers to poor HIV-related outcomes and disparities.
 
 # Materials and Methods
 
@@ -53,19 +53,19 @@ The data used in this project was obtained from multiple publicly available sour
 
 ### AIDSVu
 
-Data was obtained from AIDSVu \cite{AIDSVuDatasetsIncludes} on counts and rates of HIV-related mortality by state in 2020. Social determinants of health (SDOH), were also obtained from AIDSVu by state from 2020. SDOH included a number of variable represented as a percentage particularly pertinent to health persons with HIV. AIDSVu is a public resource presented by Emory University's Rollins School of Public Health in partnership with Gilead Sciences, Inc. and the Center for AIDS Research at Emory University (CFAR) and contains HIV surveillance data and other pertinent data to monitoring HIV-related outcomes in the United States.
+Data was obtained from AIDSVu [@AIDSVuDatasetsIncludes] on counts and rates of HIV-related mortality by state in 2020. Social determinants of health (SDOH), were also obtained from AIDSVu by state from 2020. SDOH included a number of variable represented as a percentage particularly pertinent to health persons with HIV. AIDSVu is a public resource presented by Emory University's Rollins School of Public Health in partnership with Gilead Sciences, Inc. and the Center for AIDS Research at Emory University (CFAR) and contains HIV surveillance data and other pertinent data to monitoring HIV-related outcomes in the United States.
 
 ### US Census Bureau
 
-Data on 2020 demographic composition by race/ethnicity and age by state was obtained from the [U.S. Census Bureau](https://data.census.gov/) \cite{USCensusBureau}. A five-year estimate of percent with access to broadband internet by state (released in 2020) was also obtained from the US Census Bureau.
+Data on 2020 demographic composition by race/ethnicity and age by state was obtained from the [U.S. Census Bureau](#0) [@USCensusBureau]. A five-year estimate of percent with access to broadband internet by state (released in 2020) was also obtained from the US Census Bureau.
 
 ### Kids Count
 
-Data on the percentage distribution of children under 14 years old was obtained from [Kids Count](https://datacenter.kidscount.org/), an online resource that provides high-quality data on the well-being of children in the United States.
+Data on the percentage distribution of children under 14 years old was obtained from [Kids Count](https://datacenter.kidscount.org/) [@KIDSCOUNTData], an online resource that provides high-quality data on the well-being of children in the United States.
 
 ### Spatial data
 
-In order to assess spatial associations, this analysis was limited to the contiguous United States. Spatial object of the contiguous United States was obtained from library(maps) in R and a list of neighboring contiguous United States was obtained from a public repository on [GitHub](https://github.com/ubikuity/List-of-neighboring-states-for-each-US-state). \cite{ubikuityListofneighboringstatesforeachUSstate2022}
+In order to assess spatial associations, this analysis was limited to the contiguous United States. Spatial object of the contiguous United States was obtained from library(maps) in R and a list of neighboring contiguous United States was obtained from a public repository on [GitHub](https://github.com/ubikuity/List-of-neighboring-states-for-each-US-state). [@ubikuity2022]
 
 ## Data processing
 
@@ -97,62 +97,72 @@ Moran's *I* was computed to test the null hypothesis of spatial independence.
 
 Our primary outcome of interest was the Black-to-White HIV-related MRR, which was computed as described above. Table 1 shows the overall number of HIV-related deaths, population size older than 12 years, death rate and the MRR in the United States in 2020. The rate of HIV-related deaths among this Black persons was 7.2 times high than the rate of HIV-related deaths among White persons.
 
-![Table 1](images/table1-01.png){fig-align="center" width="600"}
+```{r, echo=FALSE, message=FALSE, fig.cap="Table 1."}
+include_graphics(here("results/table1.png"))
+```
 
-![Figure 1](images/dr_race_bp.png){fig-align="center" width="600"}
+```{r, echo=FALSE, message=FALSE, fig.cap="Figure 1."}
+include_graphics(here("results/MRR_hist.png"))
+```
 
 Visual assessment (Figure 1) and Shapiro test were congruent that the distribution of Black-to-White HIV-related MRR in the US in 2020 followed a normal distribution (*p* = 0.63). No normalizing transformation was needed. Below is the histogram of the our primary outcome variable, MRR.
 
 After verifying that the Black-to-White HIV-related MRR met assumptions of normality, I tested for spatial association of the Black-to-White MRR by computing Moran's *I* (*`I`* `= 0.1507`). For uncorrelated data, the expected value of Moran's *I* was `E(I) = - 0.0213` with a variance `var(I) = 0.0095`. The data showed statistically significant evidence of spatial dependence `(z =1.768; p = 0.039)`. Figure 2 shows a Moran's scatter plot of spatially lagged Black-to-White HIV-related MRR and Black-to-White HIV-related MRR. The positive slope indicates that there is a degree of spatial clustering of the Black-to-White HIV-related MRR.
 
-![Figure 2](images/moran_mrr.png){fig-align="center"}
+```{r, echo=FALSE, message=FALSE, fig.width = 4, fig.cap="Figure 2. Moran's Scatter Plot"}
+include_graphics(here("results/moran_mrr.png"))
+```
 
 Figure 3 and 4 show the raw HIV-related death rate by Race and State.
 
 ![Figure 3](images/dr_state-01.png){fig-align="center" width="600"}
 
-![Figure 4](images/raw_rate_map-06.png){fig-align="center"}
+```{r, echo=FALSE, message=FALSE, fig.cap="Figure 3. Bargraph of Raw HIV-Related Death Rates by Race by State, 2020, United States"}
+include_graphics(here("results/dr_state.png"))
+```
+
+```{r, echo=FALSE, message=FALSE, fig.cap="Figure 4. Boxplot of HIV-Related Death by Race by Region, 2020, United States"}
+include_graphics(here("results/dr_region.png"))
+```
 
 Figure 5 compares the raw HIV-related death rate by Race and Region. These plots again show distinct disparities between rate of HIV-related death by race. Additionally, there is evidence of disparities in HIV-related death rate by region for Black persons.
 
-![Figure 5](images/dr_region.png){fig-align="center" width="600"}
-
 Table 2 shows maps of selected predictors in the United States in 2020. We can see that the `Gini Coefficient` was generally higher in Southern half of the country, indicating a greater degree of income inequality. `Percent Uninsured Under 65 Years Old` was highest in Texas, with the South and non-coastal Western states also appearing to have higher rates of uninsured. `Percent Without an Internet Subscription` was generally low through the United States, however, Wyoming had the highest percent without Internet subscription.
 
-Table 2.
-
-|                                          |                                            |                                                 |
-|----------------------|-----------------------|---------------------------|
-| ![](images/gini_map-02.png){width="200"} | ![](images/uninsured_map.png){width="200"} | ![](images/no_internet_map-01.png){width="200"} |
+```{r, echo=FALSE, message=FALSE, fig.cap="Table 2", fig.align = "default"}
+include_graphics(here("results/grid_map.png"))
+```
 
 ## Bivariate Analysis and Principal Component Analysis
 
 To narrow down potential predictors to include in later models, I first started by performing simple linear regression models of MRR vs one of the possible predictors. Variables that had a correlation coefficient of \|0.15\| or more were then selected as possible variables for analysis. These possible predictors were then scaled and principal component analysis (PCA) was performed.
 
-|                                              |                                                 |
-|-----------------------------------|-------------------------------------|
-| ![](images/bi_gini-05.png){width="300"}      |                                                 |
-| ![](images/bi_no_internet.png){width="300"}  | ![](images/bi_pov-04.png){width="300"}          |
-| ![](images/bi_uninsured-02.png){width="300"} | ![](images/bi_foodinsecure-02.png){width="300"} |
+```{r, echo=FALSE, message=FALSE, fig.cap="Table 2. Simple Linear Regression between Outcome and Individual Predictors", fig.align = "default"}
+include_graphics(here("results/grid_bivar.png"))
+```
 
-Table 2. shows the plot from the bivariate analysis of predictors that were scaled and included in the PCA. Table 3 shows the results of PCA.
 
-|                                          |                                                |
-|----------------------------------|--------------------------------------|
-| ![](images/corr_mat-02.png){width="300"} | ![](images/scree_plot-01.png){width="300"}     |
-| ![](images/biplot.png){width="300"}      | ![](images/contribution_plot.png){width="300"} |
+Table 3. shows the plot from the bivariate analysis of predictors that were scaled and included in the PCA. Table 3 shows the results of PCA.
 
-Results of the PCA shows that the first three principal components contributed for x % of variation between predictors. The variables that best represent the components were `Gini Coefficient` , `Percent Uninsured Under 65 Years Old`, `Percent Without Internet Subscription` . Ultimately, these variables were included as predictors in the full model.
+```{r, echo=FALSE, message=FALSE, fig.cap="Table 3", fig.align = "default"}
+include_graphics(here("results/grid_pca.png"))
+```
+
+Results of the PCA shows that the first principal component contributed for 91.7 % of variation between predictors. The variables `Percent Uninsured Under 65 Years Old` explained the least amountof variation. Ultimately, only `Median Household Income`, `Percent Living in Poverty`, `Percent Living with Food Insecurity`, and `Percent Without an Internet Subscription` were included as predictors in the full model.
 
 ## Full analysis
 
-![](images/car_fit_map-01.png){fig-align="center" width="600"}
+```{r, echo=FALSE, message=FALSE, fig.cap="Figure.4"}
+include_graphics(here("results/car_fit_map.png"))
+```
 
-![](images/mult_fit_map.png){width="600"}
+```{r, echo=FALSE, message=FALSE, fig.cap="Figure.5"}
+include_graphics(here("results/mult_fit_map.png"))
+```
 
-|                                              |                                               |
-|----------------------------------------------|-----------------------------------------------|
-| ![](images/car_pred_map-03.png){width="350"} | ![](images/mult_pred_map-02.png){width="350"} |
+```{r, echo=FALSE, message=FALSE, fig.cap="Figure.6"}
+include_graphics(here("results/grid_pred.png"))
+```
 
 The CAR model accounting for spatial variation only performed marginally better than the GLM model that did not account for spatial variation.
 
@@ -178,12 +188,10 @@ Note that this cited reference will show up at the end of the document, the refe
 
 {{< pagebreak >}}
 
-\## Software
-
+## Software
 ```{r}
-sessionInfo()
+sessionInfo() 
 ```
-
 {{< pagebreak >}}
 
 # References
