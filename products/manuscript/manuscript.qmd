@@ -65,7 +65,7 @@ Data on the percentage distribution of children under 14 years old was obtained 
 
 ### Spatial data
 
-In order to assess spatial associations, this analysis was limited to the contiguous United States. Spatial object of the contiguous United States was obtained from library(maps) in R and a list of neighboring contiguous United States was obtained from a public repository on [GitHub](https://github.com/ubikuity/List-of-neighboring-states-for-each-US-state). [@ubikuity2022]
+In order to assess spatial associations, this analysis was limited to the contiguous United States. Spatial object of the contiguous United States was obtained from `library(maps)` in R and a list of neighboring contiguous United States was obtained from a public repository on [GitHub](https://github.com/ubikuity/List-of-neighboring-states-for-each-US-state). [@ubikuity2022]
 
 ## Data processing
 
@@ -141,14 +141,13 @@ To narrow down potential predictors to include in later models, I first started 
 include_graphics(here("results/grid_bivar.png"))
 ```
 
-
 Table 3. shows the plot from the bivariate analysis of predictors that were scaled and included in the PCA. Table 3 shows the results of PCA.
 
 ```{r, echo=FALSE, message=FALSE, fig.cap="Table 3", fig.align = "default"}
 include_graphics(here("results/grid_pca.png"))
 ```
 
-Results of the PCA shows that the first principal component contributed for 91.7 % of variation between predictors. The variables `Percent Uninsured Under 65 Years Old` explained the least amountof variation. Ultimately, only `Median Household Income`, `Percent Living in Poverty`, `Percent Living with Food Insecurity`, and `Percent Without an Internet Subscription` were included as predictors in the full model.
+Results of the PCA shows that the first principal component contributed for 91.7 % of variation between predictors. All other components were excluded as they explained less than 20% of variation. The variables `Percent Uninsured Under 65 Years Old` explained the least amount of variation. Ultimately, only `Median Household Income`, `Percent Living in Poverty`, `Percent Living with Food Insecurity`, and `Percent Without an Internet Subscription` were included as predictors in the full model.
 
 ## Full analysis
 
@@ -189,9 +188,11 @@ Note that this cited reference will show up at the end of the document, the refe
 {{< pagebreak >}}
 
 ## Software
+
 ```{r}
 sessionInfo() 
 ```
+
 {{< pagebreak >}}
 
 # References
