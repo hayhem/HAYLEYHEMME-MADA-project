@@ -115,8 +115,6 @@ include_graphics(here("results/moran_mrr.png"))
 
 Figure 3 and 4 show the raw HIV-related death rate by Race and State.
 
-![Figure 3](images/dr_state-01.png){fig-align="center" width="600"}
-
 ```{r, echo=FALSE, message=FALSE, fig.cap="Figure 3. Bargraph of Raw HIV-Related Death Rates by Race by State, 2020, United States"}
 include_graphics(here("results/dr_state.png"))
 ```

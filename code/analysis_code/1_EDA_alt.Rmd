@@ -299,15 +299,15 @@ ggsave(here("results/grid_bivar.png"), bi_g, units="in", width=10, height=10, dp
 Now that we have an idea of the relationship between our outcome and potential predictors, next I need to account for the fact that these variables a likely have some degree of multicollinearity. In the next step we will be using PCA to scale our predictors. 
 
 ```{r}
-pos_predictors <- race_sub %>% 
-  select(c("State", 
-           "Race",
-           "Median Household Income",
+pos_predictors <- race_sub %>%
+  ungroup() %>% 
+  select(c("Median Household Income",
            "Percent Living in Poverty",
            "Percent Without an Internet subscription",
            "Percent Uninsured Under 65 Years Old",
            "Percent Living with Food Insecurity",
-           "Percentage Diagnosed Late"))
+           "Percentage Diagnosed Late")) %>% 
+  names()
 ```
 
 ```{r}

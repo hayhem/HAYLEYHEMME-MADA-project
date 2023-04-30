@@ -7,8 +7,10 @@ library(tidyverse)
 ```
 
 ```{r}
-df <- readRDS(here("data/processed_data/df_scaled_alt.rds"))
+df <- readRDS(here("data/processed_data/race_alt.rds"))
+prin_comp1 <- readRDS(here("data/processed_data/prin_comp1.rds"))
 us_nabs <- readRDS(here("data/processed_data/us_nabs.rds"))
+
 
 #Subset to contiguous states
 us_nabs <- us_nabs %>%
@@ -40,10 +42,7 @@ Setting up functions for models
  #multiple linear regression
 mult_function <- function(df) {
   mult_race <- glm(MRR ~ 
-                        `Median Household Income` +
-                        `Percent Living in Poverty` +
-                        `Percent Without an Internet subscription` +
-                        `Percent Living with Food Insecurity`,
+                        prin_comp1,
                      data = df,
                      family = "gaussian")
   print(summary(mult_race))
@@ -52,13 +51,11 @@ df$mult_fit <- mult_race$fitted.values
 return(df)
 }
 
+
 ## function to fit GLM and pull AIC
 mult_aic <- function(df) {
   mult_race <- glm(MRR ~ 
-                        `Median Household Income` +
-                        `Percent Living in Poverty` +
-                        `Percent Without an Internet subscription` +
-                        `Percent Living with Food Insecurity`,
+                        prin_comp1,
                      data = df,
                      family = "gaussian")
 aic <- AIC(mult_race)
@@ -78,10 +75,7 @@ df_mult <- mult_aic(df)
 pois_function <- function(df) {
 
 pois_race <- glm(`Death Cases` ~ Race + region +
-                        `Median Household Income` +
-                        `Percent Living in Poverty` +
-                        `Percent Without an Internet subscription` +
-                        `Percent Living with Food Insecurity`  +
+                        prin_comp1 +
                      offset(log(`Population`)),
                      data = df,
                      family = poisson(link = "log"))
@@ -94,13 +88,10 @@ return(df)
 
 }
 
-## function to fit GLM and pull AIC
+## function to fit Poisson and pull AIC
 pois_aic <- function(df) {
   pois_race <- glm(`Death Cases` ~  Race + region +
-                        `Median Household Income` +
-                        `Percent Living in Poverty` +
-                        `Percent Without an Internet subscription` +
-                        `Percent Living with Food Insecurity`  +
+                         prin_comp1  +
                      offset(log(`Population`)),
                      data = df,
                      family = poisson(link = "log"))
@@ -119,11 +110,8 @@ df_pois <- pois_aic(df)
 ```{r}
   #Negative binomial
 nb_function  <- function(df) {
-  neg_bin_race <- glm.nb(`Death Cases` ~ Race + region +
-                        `Median Household Income` +
-                        `Percent Living in Poverty` +
-                        `Percent Without an Internet subscription` +
-                        `Percent Living with Food Insecurity` +
+  neg_bin_race <- glm.nb(`Death Cases` ~  Race + region +
+                         prin_comp1  +
                      offset(log(`Population`)),
                             data = df)
   print(summary(neg_bin_race))
@@ -135,13 +123,10 @@ return(df)
 
 }
 
-## function to fit GLM and pull AIC
+## function to fit nb and pull AIC
 nb_aic <- function(df) {
   neg_bin_race <- glm.nb(`Death Cases` ~ Race + region +
-                        `Median Household Income` +
-                        `Percent Living in Poverty` +
-                        `Percent Without an Internet subscription` +
-                        `Percent Living with Food Insecurity` +
+                         prin_comp1  +
                      offset(log(`Population`)),
                             data = df)
 aic <- AIC(neg_bin_race)
@@ -166,11 +151,7 @@ car_function <- function(df) {
   
   nablist_race_df <- mat2listw(h_race_df, style = "W")
   
-  car_race <- spautolm(MRR ~                      
-                        `Median Household Income` +
-                        `Percent Living in Poverty` +
-                        `Percent Without an Internet subscription` +
-                        `Percent Living with Food Insecurity`,
+  car_race <- spautolm(MRR ~   prin_comp1, 
                            data = df,
                            listw = nablist_race_df,
                            family = "CAR")
@@ -183,6 +164,7 @@ return(df)
 
 }
 
+##pulling AIC from CAR model
 car_aic <- function(df) {
   h_race_df <- matrix(0, nrow(df), nrow(df))
   h_race_df[cbind(match(us_nabs$StateCode, df$`State Abbreviation`),
@@ -191,10 +173,7 @@ car_aic <- function(df) {
   nablist_race_df <- mat2listw(h_race_df, style = "W")
   
   car_race <- spautolm(MRR ~                      
-                        `Median Household Income` +
-                        `Percent Living in Poverty` +
-                        `Percent Without an Internet subscription` +
-                        `Percent Living with Food Insecurity`,
+                        prin_comp1,
                            data = df,
                            listw = nablist_race_df,
                            family = "CAR")
@@ -215,11 +194,14 @@ Organizing mod_AIC into new dataframe
 aic_df <- data.frame(AIC = c(df_mult, df_pois, df_nb, df_car),
                      Model = c("Multiple Linear Regression", "Poisson", "Negative Binomial", "Conditional Autoregressive"),
                      Outcome = c("Ratio", "Count", "Count", "Ratio"))
-aic_df <- aic_df %>% mutate(AIC  = round(AIC, 2))
+
+aic_df <- aic_df %>%
+  mutate(AIC  = round(AIC, 2))
 
 ```
 
 ```{r}
+##Making kable table of model results
 library(kableExtra)
 library(knitr)
 table_fit <- aic_df %>%
@@ -242,32 +224,27 @@ table_fit %>%
 saveRDS(df, here("data/processed_data/df_fit_alt.rds"))
 ```
 
-Creating function that subsets by specified race, and compute/ plots Moran's I and lisa.
+Testing for spatial association. 
 ```{r}
-spacy_function <- function(df) {
-
+#setting up matrix
   h_race_df <- matrix(0, nrow(df), nrow(df))
   h_race_df[cbind(match(us_nabs$StateCode, df$`State Abbreviation`),
   match(us_nabs$NeighborStateCode, df$`State Abbreviation`))] <- 1
   
+#creating neighbor list 
   nablist_race_df <- mat2listw(h_race_df, style = "W")
 
- # plot Moran's I
+# Using testing for spatial association using Moran's test (global)
   print(moran.test(df$MRR, nablist_race_df, zero.policy = TRUE, randomisation = FALSE))
+# plot Moran's I
   moran.plot(df$MRR, nablist_race_df, zero.policy = TRUE)
-  
-  # calculate and print LISA statistics
-  lisa_race <- localmoran(df$MRR, nablist_race_df, zero.policy=TRUE)
-  summary(lisa_race[,1])
-}
-```
-
-```{r}
-spacy_function(df)
-```
-
-```{r}
+  #save plot
 png(here("results/moran_mrr.png"))
-spacy_function(df)
+  moran.plot(df$MRR, nablist_race_df, zero.policy = TRUE)
 dev.off()
+
+  
+  # calculate and print LISA statistics (local)
+lisa_race <- localmoran(df$MRR, nablist_race_df, zero.policy=TRUE)
+  summary(lisa_race[,1]) 
 ```
