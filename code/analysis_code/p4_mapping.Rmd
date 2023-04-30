@@ -10,14 +10,14 @@ library(RColorBrewer)
 
 states <- map_data("state")
 
-df_fit <- readRDS(here("data/processed_data/df_fit_alt.rds"))
+df_scaled <- readRDS(here("data/processed_data/df_fit_alt.rds"))
 df_raw <- readRDS(here("data/processed_data/race_alt.rds"))
 ```
 
 
 I do a bit more cleaning to the data to tidy things up and create some new variables
 ```{r}
-df_fit <- df_fit %>%
+df_scaled <- df_scaled %>%
   mutate(region = tolower(State)) %>% 
   replace(is.na("Ratio Observed/ Expected"), 0) %>% 
   mutate(Exp_DR = `Expected Death Cases`/Population *1e5,
@@ -44,18 +44,26 @@ df_fit <- df_fit %>%
          predicted_observed_nb = ifelse(!is.finite(predicted_observed_nb), 0, predicted_observed_nb),
          observed_predicted_nb = `Death Cases`/nb_fit,
          observed_predicted_nb = ifelse(!is.finite(observed_predicted_nb), 0, observed_predicted_nb))
+
+
+df_raw <- df_raw %>%
+  mutate(region = tolower(State))
 ```
 
 Next, I will merge my dataframe contain the variables of interest with the spatial object. 
 ```{r}
-df_sf_fit<- merge(states,df_fit, by = "region")
+df_sf_scale <- merge(states,df_scaled, by = "region")
 # This next step is import to ensure that no "holes" appear in the map.
-df_sf_fit <- df_sf_fit[order(df_sf_fit$order), ]
+df_sf_scale <- df_sf_scale[order(df_sf_scale$order), ]
+
+df_sf_raw <- merge(states,df_raw, by = "region")
+# This next step is import to ensure that no "holes" appear in the map.
+df_sf_raw <- df_sf_raw[order(df_sf_raw$order), ]
 ```
 
 Now I'm ready to start mapping! I'll begin by looking at the map of the raw HIV death rate across to contiguous US by selected race/ ethnicity.
 ```{r}
-ggplot(df_sf_fit, aes(long, lat)) +
+ggplot(df_sf_scale, aes(long, lat)) +
   geom_polygon(aes(group = group, fill =`Death Rate (estimated)`)) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5) +
   facet_wrap(. ~ Race)  + theme_void() + 
@@ -69,7 +77,7 @@ ggsave(here("results/raw_rate_map.png"), units="in", width=10, height=4, dpi=300
 ```
 
 ```{r}
-ggplot(df_sf_fit, aes(long, lat)) +
+ggplot(df_sf_scale, aes(long, lat)) +
   geom_polygon(aes(group = group, fill =`MRR`)) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5) + theme_void() + 
   theme(strip.text = element_text(size = 14),
@@ -82,7 +90,7 @@ ggsave(here("results/mrr_map.png"), units="in", width=10, height=4, dpi=300)
 ```
 
 ```{r}
-map_1 <- ggplot(df_sf_fit, aes(long, lat)) +
+map_1 <- ggplot(df_sf_raw, aes(long, lat)) +
   geom_polygon(aes(group = group, fill =`Percent Living in Poverty`)) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5) + theme_void() + 
   theme(strip.text = element_text(size = 14),
@@ -93,7 +101,9 @@ map_1 <- ggplot(df_sf_fit, aes(long, lat)) +
 ```
 
 ```{r}
-map_2 <-ggplot(df_sf_fit, aes(long, lat)) +
+map_2 <- 
+  
+  ggplot(df_sf_raw, aes(long, lat)) +
   geom_polygon(aes(group = group, fill =`Median Household Income`/1e4)) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5) + theme_void() + 
   theme(strip.text = element_text(size = 14),
@@ -105,7 +115,7 @@ map_2 <-ggplot(df_sf_fit, aes(long, lat)) +
 ```
 
 ```{r}
-map_3 <- ggplot(df_sf_fit, aes(long, lat)) +
+map_3 <- ggplot(df_sf_raw, aes(long, lat)) +
   geom_polygon(aes(group = group, fill =`Percent Uninsured Under 65 Years Old`)) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5)   + theme_void() + 
   theme(strip.text = element_text(size = 14),
@@ -117,7 +127,7 @@ map_3 <- ggplot(df_sf_fit, aes(long, lat)) +
 
 
 ```{r}
-map_4 <- ggplot(df_sf_fit, aes(long, lat)) +
+map_4 <- ggplot(df_sf_raw, aes(long, lat)) +
   geom_polygon(aes(group = group, fill =`Percent Without an Internet subscription`)) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5)   + theme_void() + 
   theme(strip.text = element_text(size = 14),
@@ -140,7 +150,7 @@ The map for HIV-related death differs drastically across the United States by ra
 
 Next, let's map a probability map based on where we'd expect deaths if risk of HIV-related death was consistent across the US.
 ```{r}
-ggplot(df_sf_fit, aes(long, lat)) +
+ggplot(df_sf_scale, aes(long, lat)) +
   geom_polygon(aes(group = group, fill = Exp_DR)) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5) +
   facet_wrap(. ~ Race) +
@@ -158,7 +168,7 @@ ggplot(df_sf_fit, aes(long, lat)) +
 
 Next, let's using Dykes and Unwin's method of smooth map using a chi square value. 
 ```{r}
-ggplot(df_sf_fit, aes(long, lat)) +
+ggplot(df_sf_scale, aes(long, lat)) +
   geom_polygon(aes(group = group, fill = dykes_chi)) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5) +
   facet_wrap(. ~ Race)  + theme_void() + 
@@ -182,41 +192,41 @@ Dykes and Unwin (Dykes and Unwin 2001) technique  has the effect of creating a d
 
 ```{r}
 ##Smoothed map using fitted values from best model (CAR)
-car_smooth <- ggplot(df_sf_fit, aes(long, lat)) +
+ggplot(df_sf_scale, aes(long, lat)) +
   geom_polygon(aes(group = group, fill = car_fit)) +
   scale_fill_gradientn(colors = rev(brewer.pal(9, "RdYlGn"))) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5)  + 
   theme_void() + 
   theme(strip.text = element_text(size = 14),
         legend.position = "bottom") +
-  labs(title = "Smoothed Map of 
-Black-to-White HIV-Related MRR (CAR)
-United States, 2020", x = "Ratio", y = "", fill = "") +
+  labs(title = "Smoothed Map of Black-to-White HIV-Related Mortality Rate Ratio,
+United States, 2020 (CAR)", x = "Ratio", y = "", fill = "") +
   theme(plot.title= element_text(hjust = 0.5))
 
+
+ggsave(here("results/car_fit_map.png"), units="in", width=10, height=4, dpi=300)
 ``` 
 
 ```{r}
 ##Smoothed map using fitted values from MULT (only marginally worse than CAR)
-mult_smooth <-ggplot(df_sf_fit, aes(long, lat)) +
+ggplot(df_sf_scale, aes(long, lat)) +
   geom_polygon(aes(group = group, fill = mult_fit)) +
   scale_fill_gradientn(colors = rev(brewer.pal(9, "RdYlGn"))) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5)  + 
   theme_void() + 
   theme(strip.text = element_text(size = 14),
         legend.position = "bottom") +
-  labs(title = "Smoothed Map of 
-Black-to-White HIV-Related MRR (GLM)
-United States, 2020", x = "Ratio ", y = "", fill = "") +
+  labs(title = "Smoothed Map of Black-to-White HIV-Related Mortality Rate Ratio,
+United States, 2020 (GLM)", x = "Ratio ", y = "", fill = "") +
   theme(plot.title= element_text(hjust = 0.5))
 
-grid_smooth <- grid.arrange(car_smooth, mult_smooth, ncol = 2, nrow = 1)
-ggsave(here("results/grid_smooth.png"), grid_smooth, units="in", width=10, height=5, dpi=300)
+
+ggsave(here("results/mult_fit_map.png"), units="in", width=10, height=4, dpi=300)
 ``` 
 
 Next, let's look at the map for the ratio of predicted to observed (P/O) values. 
 ```{r}
-pred_mult <- ggplot(df_sf_fit, aes(long, lat)) +
+pred_mult <- ggplot(df_sf_scale, aes(long, lat)) +
   geom_polygon(aes(group = group, fill = predicted_observed_mult)) +
   scale_fill_gradientn(colors = rev(brewer.pal(9, "RdYlGn"))) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5)   + 
@@ -224,11 +234,11 @@ pred_mult <- ggplot(df_sf_fit, aes(long, lat)) +
   theme(strip.text = element_text(size = 14),
         legend.position = "bottom") +
   labs(title = "Predicted Over Observed
-Black-to-White HIV-Related MRR
+Black-to-White HIV-Related MRR,
 United States, 2020 (GLM)", x = "", y = "", fill = "Ratio") +
   theme(plot.title= element_text(hjust = 0.5))
 
-pred_car <-ggplot(df_sf_fit, aes(long, lat)) +
+pred_car <-ggplot(df_sf_scale, aes(long, lat)) +
   geom_polygon(aes(group = group, fill = predicted_observed_car)) +
   scale_fill_gradientn(colors = rev(brewer.pal(9, "RdYlGn"))) +
   coord_map("albers",  lat0 = 45.5, lat1 = 29.5) + 
@@ -236,7 +246,7 @@ pred_car <-ggplot(df_sf_fit, aes(long, lat)) +
   theme(strip.text = element_text(size = 14),
         legend.position = "bottom") +
   labs(title = "Predicted Over Observed
-Black-to-White HIV-Related MRR
+Black-to-White HIV-Related MRR,
 United States, 2020 (CAR)", x = "", y = "", fill = "Ratio") +
   theme(plot.title= element_text(hjust = 0.5))
 ```

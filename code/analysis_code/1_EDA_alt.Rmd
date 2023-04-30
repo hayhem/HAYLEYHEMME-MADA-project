@@ -300,13 +300,14 @@ Now that we have an idea of the relationship between our outcome and potential p
 
 ```{r}
 pos_predictors <- race_sub %>% 
-  select(c("Median Household Income",
+  select(c("State", 
+           "Race",
+           "Median Household Income",
            "Percent Living in Poverty",
            "Percent Without an Internet subscription",
            "Percent Uninsured Under 65 Years Old",
            "Percent Living with Food Insecurity",
-           "Percentage Diagnosed Late")) %>% 
-  names()
+           "Percentage Diagnosed Late"))
 ```
 
 ```{r}
