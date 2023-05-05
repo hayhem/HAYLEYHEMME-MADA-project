@@ -1,0 +1,277 @@
+```{r message=FALSE, warning=FALSE}
+library(here)
+library(mfx)
+library(spatialreg)
+library(spdep)
+library(tidyverse)
+library(AER)
+```
+
+```{r}
+df <- readRDS(here("data/processed_data/race_alt.rds"))
+prin_comp1 <- readRDS(here("data/processed_data/prin_comp1.rds"))
+prin_comp2 <- readRDS(here("data/processed_data/prin_comp2.rds"))
+us_nabs <- readRDS(here("data/processed_data/us_nabs.rds"))
+
+
+#Subset to contiguous states
+us_nabs <- us_nabs %>%
+  filter(!grepl("AK", StateCode),
+         !grepl("HI", StateCode), 
+         !grepl("DC", StateCode))
+
+```
+
+```{r}
+states <- data.frame(state.name)
+states$region <- case_when(
+  states$state.name %in% c("Connecticut", "Maine", "Massachusetts", "New Hampshire", "Rhode Island", "Vermont", "New Jersey", "New York", "Pennsylvania") ~ "Northeast",
+  states$state.name %in% c("Illinois", "Indiana", "Iowa", "Kansas", "Michigan", "Minnesota", "Missouri", "Nebraska", "North Dakota", "Ohio", "South Dakota", "Wisconsin") ~ "Midwest",
+  states$state.name %in% c("Alabama", "Arkansas", "Delaware", "Florida", "Georgia", "Kentucky", "Louisiana", "Maryland", "Mississippi", "North Carolina", "Oklahoma", "South Carolina", "Tennessee", "Texas", "Virginia", "West Virginia") ~ "South",
+  states$state.name %in% c("Arizona", "California", "Colorado", "Idaho", "Montana", "Nevada", "New Mexico", "Oregon", "Utah", "Washington", "Wyoming") ~ "West"
+)
+
+df <- full_join(df, states, by = join_by(State == state.name))
+
+df <- df %>% 
+  filter(!grepl("Alaska", State),
+         !grepl("Hawaii", State))
+
+# reorder race variable to make White the reference group for NB
+df <- df %>% 
+  mutate(Race = factor(Race, levels = c("White","Black")))
+```
+
+
+# multiple linear regression
+```{r}
+mult_race <- glm(MRR ~ 
+                        prin_comp1 + prin_comp2,
+                     data = df,
+                     family = "gaussian")
+mult_sum <-   summary(mult_race)
+mult_sum
+
+#storing values in table and computing confidence interval
+mult_table <- as.tibble(coef(mult_sum)) %>% 
+  mutate(low = round(`Estimate` - 1.96 * `Std. Error`, 2),
+         high = round(`Estimate` + 1.96 * `Std. Error`, 2),
+        value = c("Intercept",
+                   "PC1",
+                   "PC2")) %>% 
+  relocate(value, .before = Estimate) %>%
+  relocate(c(low, high), .before = `t value`) %>% 
+  unite("95% CI", c("low", "high"), sep = ", ", na.rm = TRUE)
+   
+  ##pulling and storing fitted values
+df$mult_fit <- mult_race$fitted.values
+
+## pulling AIC
+aic_mult <- AIC(mult_race)
+```
+
+#poisson
+```{r}
+pois_race <- glm(`Death Cases` ~ Race + region +
+                        prin_comp1 + prin_comp2 + 
+                     offset(log(`Population`)),
+                     data = df,
+                     family = poisson(link = "log"))
+
+#Testing for overdispersion
+dispersiontest(pois_race, trafo=1)
+#Evidence of overdisperion with c = 17.35. Will instead utilize negative binomial regression, which can account for overdispersion.
+```
+  #Negative binomial that outputs rate ratios
+```{r}
+neg_bin_race <- negbinirr(`Death Cases` ~  Race +
+                     prin_comp1  + prin_comp2 +
+                      offset(log(`Population`)),
+                             data = df)
+nb_sum <- summary(neg_bin_race$fit)
+
+coef(nb_sum)
+
+#storing values in table and computing confidence interval
+nb_table <- as.tibble(coef(nb_sum)) %>% 
+  mutate(low = `Estimate` - 1.96 * `Std. Error`,
+         high = `Estimate` + 1.96 * `Std. Error`) %>% 
+  mutate(across(!contains("z"), exp),
+         value = c("Intercept",
+                   "Race - Black", 
+                   "PC1", 
+                   "PC2")) %>% 
+  relocate(value, .before = Estimate) %>%
+  relocate(c(low, high), .before = `z value`) %>%  
+  mutate(across(c("low", "high"), round, 2),
+          across(where(is.numeric), ~format(., scientific = FALSE))) %>% 
+  unite("95% CI", c(low, high), sep = ", ", na.rm = TRUE)  
+
+
+##pull fitted values to save in main df
+df$nb_fit <- neg_bin_race$fit$fitted.values
+
+## pull AIC
+aic_nb <- AIC(neg_bin_race$fit)
+
+print(confint(neg_bin_race$fit))
+
+```
+Testing for spatial association. 
+```{r}
+#setting up matrix
+  h_race_df <- matrix(0, nrow(df), nrow(df))
+  h_race_df[cbind(match(us_nabs$StateCode, df$`State Abbreviation`),
+  match(us_nabs$NeighborStateCode, df$`State Abbreviation`))] <- 1
+  
+#creating neighbor list 
+  nablist_race_df <- mat2listw(h_race_df, style = "W")
+
+# Using testing for spatial association using Moran's test (global)
+  print(moran.test(df$MRR, nablist_race_df, zero.policy = TRUE, randomisation = FALSE))
+# plot Moran's I
+  moran.plot(df$MRR, nablist_race_df, zero.policy = TRUE)
+  #save plot
+png(here("results/moran_mrr.png"))
+  moran.plot(df$MRR, nablist_race_df, zero.policy = TRUE)
+dev.off()
+
+  # calculate and print LISA statistics (local)
+lisa_race <- localmoran(df$MRR, nablist_race_df, zero.policy=TRUE)
+summary(lisa_race[,1]) 
+```
+
+#Fitting CAR model (requires neighbors)
+```{r}
+  h_race_df <- matrix(0, nrow(df), nrow(df))
+  h_race_df[cbind(match(us_nabs$StateCode, df$`State Abbreviation`),
+                  match(us_nabs$NeighborStateCode, df$`State Abbreviation`))] <- 1
+  
+  nablist_race_df <- mat2listw(h_race_df, style = "W")
+  
+  car_race <- spautolm(MRR ~   prin_comp1 + prin_comp2, 
+                           data = df,
+                           listw = nablist_race_df,
+                           family = "CAR")
+
+car_sum <-  summary(car_race)
+car_sum
+
+##pull fitted values to save in main df
+df$car_fit <- car_race$fit$fitted.values
+
+
+#Pulling estimates and standard errors
+car_table <- as.tibble(coef(car_sum)) %>% 
+  mutate(low = round(`Estimate` - 1.96 * `Std. Error`, 2),
+         high = round(`Estimate` + 1.96 * `Std. Error`, 2),
+        value = c("Intercept",
+                   "PC1",
+                   "PC2")) %>% 
+  relocate(value, .before = Estimate) %>%
+  relocate(c(low, high), .before = `z value`) %>% 
+  unite("95% CI", c("low", "high"), sep = ", ", na.rm = TRUE)
+
+#lambda confidence interval
+  car_race$lambda.se
+  car_race$lambda + c(-2,2) * car_race$lambda.se
+  
+##pulling AIC from CAR model
+aic_car <- AIC(car_race)
+
+
+```
+
+Organizing mod_AIC into new dataframe
+```{r}
+aic_df <- data.frame(AIC = c(aic_mult, aic_nb, aic_car),
+                     Model = c("Multiple Linear Regression", "Negative Binomial", "Conditional Autoregressive"))
+
+aic_df <- aic_df %>%
+  mutate(AIC  = round(AIC, 2))
+
+```
+
+```{r}
+##Making kable table of model results
+library(kableExtra)
+library(knitr)
+table_fit <- aic_df %>%
+  dplyr::select(c(Model, AIC)) %>% 
+  kable(caption = "<center>Model Comparison</center>", col.names = c("Model Type", "AIC"),
+        align = "c") %>%
+  kable_minimal() %>%
+  kable_styling(font_size = 50) %>%
+gsub("font-size: initial !important;",
+"font-size: 50pt !important;",
+.)  %>% 
+  landscape()  
+
+table_fit %>%  
+  save_kable(here("results/table_fit.png"))
+
+```
+
+```{r}
+##Making kable table of summary results
+
+library(kableExtra)
+
+mult_table %>%
+  mutate_if(is.numeric, round, 2) %>%
+  mutate(`Pr(>|t|)` = ifelse(`Pr(>|t|)` < 0.005, 
+                             cell_spec(paste0("<", formatC(0.005, format = "f", digits = 3)), "latex"),
+                `Pr(>|t|)`)) %>%
+  kable(caption = "<center>Summary of Multiple Linear Regression Model</center>",
+        align = "c",
+        col.names = c("Coefficient", "Estimate", "Std. Error", "95% CI", "t value", "p value"), digits = 3) %>%
+  kable_minimal() %>%
+  kable_styling(font_size = 50) %>%
+  gsub("font-size: initial !important;",
+        "font-size: 50pt !important;",
+        .)  %>% 
+  landscape() %>%  
+  save_kable(here("results/mult_table.png"))
+
+nb_table %>% 
+ # mutate(across(where(is.numeric), ~format(., scientific = FALSE))) %>%
+  mutate(across(c(2:3,5:6), as.numeric)) %>%
+  mutate(`Pr(>|z|)` = round(`Pr(>|z|)`, 2),
+    `Pr(>|z|)` = ifelse(`Pr(>|z|)` < 0.005, 
+                             cell_spec(paste0("<", formatC(0.005, format = "f", digits = 3)), "latex"),
+                `Pr(>|z|)`)) %>%
+  kable(caption = "<center>Summary of Negative Binomial Regression Model</center>",
+        align = "c",
+        col.names = c("Coefficient", "Estimate", "Std. Error", "95% CI", "z value", "p value"), digits = 2) %>%
+  kable_minimal() %>%
+  kable_styling(font_size = 50) %>%
+  gsub("font-size: initial !important;",
+        "font-size: 50pt !important;",
+        .)  %>% 
+  landscape() %>%  
+  save_kable(here("results/nb_table.png"))
+
+
+car_table %>%
+  mutate_if(is.numeric, round, 2) %>%
+  mutate(`Pr(>|z|)` = ifelse(`Pr(>|z|)` < 0.005, 
+                             cell_spec(paste0("<", formatC(0.005, format = "f", digits = 3)), "latex"),
+                `Pr(>|z|)`)) %>%
+  kable(caption = "<center>Summary of Conditional Autoregressive Model</center>",
+        align = "c",
+        col.names = c("Coefficient", "Estimate", "Std. Error", "95% CI", "z value", "p value"), digits = 3) %>%
+  kable_minimal() %>%
+  kable_styling(font_size = 50) %>%
+  gsub("font-size: initial !important;",
+        "font-size: 50pt !important;",
+        .)  %>% 
+  landscape() %>%  
+  save_kable(here("results/car_table.png"))
+
+```
+
+
+
+```{r}
+saveRDS(df, here("data/processed_data/df_fit_alt.rds"))
+```

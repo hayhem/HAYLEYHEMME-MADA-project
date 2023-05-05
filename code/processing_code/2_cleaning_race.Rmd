@@ -8,13 +8,6 @@ library(here)
 race_df <- readRDS(here("data/processed_data/race_df.rds"))
 race_df <-  race_df %>%  replace(is.na("Black Death Cases"), 0) %>% 
    replace(is.na("White Death Cases"), 0) 
-
-```
-Let's find the HIV death rate by race
-```{r}
-race_df <- race_df %>% 
-  mutate(black_death_rate = round(`Black Death Cases`/Black_pop*1e5,1),
-         white_death_rate = round(`White Death Cases`/White_pop*1e5,1))
 ```
 
 Next, let's find the expected number of HIV deaths. First, we'll calculate lambda. 
@@ -30,13 +23,14 @@ lambda_white <- race_df %>%
   as.numeric()
 ```
 
-NOTE: I realized after running some more analyses that calculating lambda for each race is masking disparities in HIV-related deaths between races. I believe it would more appropriate calculate a single value lambda for entire population. 
 
 ```{r}
-black_df <- race_df %>% select(1:3, contains("Black"), 50:66) 
+black_df <- race_df %>% 
+  dplyr::select(1:3, contains("Black"), 50:64) %>% 
+  mutate(black_death_rate = round(`Black Death Cases`/Black_pop*1e5,1))
 
 black_df <- black_df %>% 
-  select(!contains("white")) %>% 
+    group_by(State) %>% 
  rename("Death Rate (AIDSVu)" = `Black Death Rate`,
         "Population" = Black_pop,
         "Death Cases" = "Black Death Cases",
@@ -50,12 +44,16 @@ black_df <- black_df %>%
         "Prevalent HIV Cases" = "Black Cases",
         "Death Rate (estimated)" = black_death_rate) %>% 
   mutate(Race = "Black",
-        "Expected Death Cases" = round(lambda_black * Population)) 
+        "Expected Death Cases" = round(lambda_black * Population),
+        "Expected Death Rate (Race)" = round(`Expected Death Cases`/`Population` *1e5,1)) %>% 
+  ungroup()
 
-white_df <- race_df %>% select(1:3, contains("White"), 50:66) 
+white_df <- race_df %>% 
+  dplyr::select(1:3, contains("White"), 50:64) %>% 
+   mutate(white_death_rate = round(`White Death Cases`/White_pop*1e5,1))
 
 white_df <- white_df %>% 
-  select(!contains("black")) %>% 
+  group_by(State) %>% 
  rename("Death Rate (AIDSVu)" = `White Death Rate`,
         "Population" = White_pop,
         "Death Cases" = "White Death Cases",
@@ -69,8 +67,9 @@ white_df <- white_df %>%
         "Prevalent HIV Cases" = "White Cases",
         "Death Rate (estimated)" = white_death_rate) %>% 
   mutate(Race = "White",
-        "Expected Death Cases" = round(lambda_white * Population)) 
-
+        "Expected Death Cases" = round(lambda_white * Population),
+        "Expected Death Rate (Race)" = round(`Expected Death Cases`/`Population` * 1e5, 1)) %>% 
+  ungroup()
 
 race_df <- list(black_df, white_df)
 
@@ -80,18 +79,38 @@ race_df <- race_df %>%
   mutate(`Percent HIV Prevalence` = round(`Prevalent HIV Cases`/ `Population`*100,2))
 ```
 
-Now, let's calculate lambda - null, which would assume that there were no difference in Expected deaths by race.
+Now, let's calculate lambda - null, which would assume that there is no risk difference in Expected deaths by race or location
 ```{r}
-lambda <- race_df %>%
+lambda_null <- race_df %>%
   drop_na("Death Cases") %>% 
   summarize(lambda = sum(`Death Cases`)/sum(Population)) %>%
   as.numeric()
 
 race_df <- race_df %>% 
-  mutate(`Expected Death Cases (Null)` = Population * lambda,
+  mutate(`Expected Death Cases (Null)` = Population * lambda_null,
+         `Difference Observed - Expected` = `Death Cases` - `Expected Death Cases`,
          `Ratio Observed/ Expected (Null)` = `Death Cases`/`Expected Death Cases (Null)`,
-         `Ratio Observed/ Expected (Race)` = `Death Cases`/`Expected Death Cases`)
+         `Ratio Observed/ Expected (Race)` = `Death Cases`/`Expected Death Cases`,
+         `Null Expected Rate` = `Expected Death Cases (Null)`/ Population*1e5,
+         `Percentage Diagnosed Late` = replace(`Percentage Diagnosed Late`, which(`Percentage Diagnosed Late` < 0), 0))
 ```
+
+Let's create a variable for mortality rate ratio of Black/ White
+```{r}
+race_df <- race_df %>%
+  group_by(State) %>%
+  mutate(MRR = `Death Rate (estimated)`[Race == "Black"] / `Death Rate (estimated)`[Race == "White"]) %>%
+  ungroup()
+
+#Calculate MRR with null effect of LOCATION (since lambda was calculated using sum cases and population for each race)
+race_df <- race_df %>%
+  group_by(State) %>% 
+  mutate(MRR_null_loc = `Expected Death Rate (Race)`[Race == "Black"] / `Expected Death Rate (Race)`[Race == "White"]) %>%
+  ungroup()
+
+# MRR with null effect of LOCATION and RACE would equal 1...
+```
+
 
 Save the file and now we can move on to some exploratory analysis!
 ```{r}

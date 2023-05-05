@@ -1,5 +1,5 @@
 ---
-title: "Spatial Investigation and Exploration of Factors influencing HIV-related Mortality"
+title: "Investigating the Association between Social Determinants of Health and Racial Disparities in HIV-related Mortality Rates Among non-Hispanic Black and non-Hispanic White Persons"
 subtitle: "United States, 2020"
 author: Hayley Hemme
 date: "`r Sys.Date()`"
@@ -13,37 +13,42 @@ csl: ../apa.csl
 ---
 
 ```{r, echo=FALSE, warning = FALSE, message=FALSE}
-# load a few R packages
-library(knitr)
-library(readxl)
-library(lubridate)
-library(stringr)
-library(tidyverse)
+#packages used
 library(here)
+library(ggfortify)
+library(knitr)
 library(kableExtra)
+library(ggpubr)
+library(ggcorrplot)
+library(FactoMineR)
+library(factoextra)
+library(broom)
+library(mfx)
+library(spatialreg)
+library(spdep)
+library(tidyverse)
+library(AER)
+library(RColorBrewer)
+library(readxl)
+library(reshape2)
+library(lubridate)
 ```
 
-# Summary/Abstract
+{{< pagebreak >}}
 
-This project aims to identify factors associated with racial disparities in HIV-related death rates in the United States. To assess this, we look at the ratio of Black-to-White HIV-related mortality rate (MRR) from 2020 in the United States. Additionally, we assess whether social determinants of health (SDOH) can explain variation in MRR at the state-level and regional-level. Both spatial and non-spatial methods were used.
+# Summary
+
+This project aims to identify factors associated with racial disparities in HIV-related death rates in the United States. To assess this, we look at the ratio of Black-to-White HIV-related mortality rate (MRR) from 2020 in the United States. Additionally, we assess whether social determinants of health (SDOH) can explain variation in MRR at the state-level by employing spatial and non-spatial methods.
 
 {{< pagebreak >}}
 
 # Introduction
 
-HIV continues to have a significant impact on marginalized communities, leading to significant disparities in the rates of new HIV diagnoses and HIV-related health outcomes, including late HIV diagnosis, progression to AIDS, and HIV-related death. The extent of these disparities are particularly pronounced in the United States when comparing HIV-related outcomes among Black and White persons. Studies have revealed a direct correlation between social determinants of health indicators and poor health outcomes for people with HIV. In this project, our objective is to identify the factors contributing to the disparities in HIV-related death rates between Black and White individuals in the United States.
-
-## Question:
-
-Can the ratio of Black-to-White HIV-related mortality rate (MRR) from 2020 in the United States be modeled by social determinants of health or by HIV-related outcomes (late diagnoses, viral suppression). Can a spatial model explain variation in MMR at the state-level and regional-level after accounting for variables associated SDOH or HIV-related outcomes?
-
-H0 : There is no spatial correlation between Black-to-White HIV-related MRR and SDOH or HIV-related outcomes.
-
-Ha : There is a spatial correlation between Black-to-White HIV-related MRR and SDOH or HIV-related outcomes.
+The impact of human immunodeficiency virus (HIV) on marginalized communities in the United States continues to be a significant public health concern. Of particular concern is the significant disparity in HIV-related health outcomes between non-Hispanic Black and non-Hispanic White persons, including the rates of new HIV diagnoses, late HIV diagnoses, and HIV-related death. Research has shown a direct correlation between social determinants of health (SDOH) indicators and poor health outcomes for individuals with HIV. In this project, our aim is to investigate the factors contributing to the disparities in HIV-related death rates between Black and White individuals in the US. Specifically, we will examine whether the Black-to-White HIV-related mortality rate (MRR) from 2020 can be modeled by SDOH and late diagnoses. Additionally, we will explore whether a spatial model can explain variation in MRR at the state level after accounting for variables associated with SDOH or HIV-related outcomes. Our null hypothesis is that there is no spatial correlation between Black-to-White HIV-related MRR and SDOH or HIV-related outcomes, while our alternative hypothesis suggests that there is indeed a spatial correlation.
 
 # Background Information
 
-Since the emergence of the HIV epidemic in 1981 in the United States, more than 1.2 million people in the United States have been diagnosed with HIV, resulting in more than 700,000 HIV-related deaths [@jun07HIVAIDSEpidemic2021]. Medical advancements have led to effective antiretroviral therapies that not only treat HIV infection and reduce adverse HIV-related health outcomes, such as progression to AIDS, but have also led to use of these medications to prevent infection before and after potential exposure for people who are HIV negative Even still, more than 30,000 people in the United States continue to be diagnosed each year [@jun07HIVAIDSEpidemic2021]. While the Ending the Epidemic initiative set up a goal of 90% reduction in new HIV infections by 2030 by upscaling efforts in HIV diagnoses treatment, and prevention, this is followed by nearly one decade of steady HIV diagnoses rates. Developing targeted intervention programs is essential to achieve this goal. To accomplish this, we need to gain a deeper understanding of the impact or contribution of complex factors such as social determinants of health or other barriers to poor HIV-related outcomes and disparities.
+Since the emergence of the epidemic in 1981 in the United States, more than 1.2 million people in the country have been diagnosed with human immunodeficiency virus (HIV), resulting in more than 700,000 HIV-related deaths [@jun07HIVAIDSEpidemic2021]. The virus encodes three enzymes that allow it to escape host immunity and results in chronic infection that, without treatment, ultimately leads to acquired immunodeficiency syndrome (AIDS). Medical advancements have led to development effective antiretroviral therapies, many of which disrupt the function of these key enzymes, and are capable of not only treating HIV infection by reducing adverse HIV-related health outcomes, including slowing progression to AIDS, but are also capable of preventing infection before and after potential exposure for people who are HIV negative. Even still, more than 30,000 people in the United States continue to be diagnosed each year [@jun07HIVAIDSEpidemic2021]. While the Ending the Epidemic initiative set up a goal of 90% reduction in new HIV infections by 2030 by upscaling efforts in HIV diagnoses treatment, and prevention, this is followed by nearly one decade of steady HIV diagnoses rates. Developing targeted intervention programs is essential to achieve this goal. To accomplish this, we need to gain a deeper understanding of the impact or contribution of complex factors such as social determinants of health or other barriers to poor HIV-related outcomes and disparities.
 
 # Materials and Methods
 
@@ -53,7 +58,7 @@ The data used in this project was obtained from multiple publicly available sour
 
 ### AIDSVu
 
-Data was obtained from AIDSVu [@AIDSVuDatasetsIncludes] on counts and rates of HIV-related mortality by state in 2020. Social determinants of health (SDOH), were also obtained from AIDSVu by state from 2020. SDOH included a number of variable represented as a percentage particularly pertinent to health persons with HIV. AIDSVu is a public resource presented by Emory University's Rollins School of Public Health in partnership with Gilead Sciences, Inc. and the Center for AIDS Research at Emory University (CFAR) and contains HIV surveillance data and other pertinent data to monitoring HIV-related outcomes in the United States.
+Data was obtained from AIDSVu [@AIDSVuDatasetsIncludes] on counts and rates of HIV-related mortality by state in 2020. It is important to distinguish that these deaths are specifically the result of HIV infection, and do not represent all deaths that occurred in 2020 in the United States among persons with HIV. Social determinants of health (SDOH), were also obtained from AIDSVu by state from 2020. SDOH included a number of variables represented as a percentage particularly pertinent to health persons with HIV. AIDSVu is a public resource presented by Emory University's Rollins School of Public Health in partnership with Gilead Sciences, Inc. and the Center for AIDS Research at Emory University (CFAR) and contains HIV surveillance data and other pertinent data to monitoring HIV-related outcomes in the United States.
 
 ### US Census Bureau
 
@@ -71,125 +76,158 @@ In order to assess spatial associations, this analysis was limited to the contig
 
 ### Cleaning
 
-Data was cleaned to adjust variable format, merge dataframes, subset by race/ ethnicity, and for feature engineering. Several observations in response variables were suppressed due to small counts/ rates were represented by `-9`, and were re-coded to NA. To removed multicollinearity and to assess the relationship between predictors, principal component analysis (PCA). was used. Variables that had correlation greater that 0.3 in the first two principal components were deemed important. Scaled predictors of the the first three principal components were then used in various regression models multiple linear regression, Poisson regression, and negative binomial. Non-spatial and spatial methods were used.
+In the data cleaning process, various tasks were performed to ensure the data were ready for analysis. Firstly, variables were reformatted and dataframes were merged as necessary. Additionally, several observations in response variables were suppressed due to small counts/ rates were represented by `-9`, and were re-coded to `0`, rather than `NA`, as some analysis methods did not permit missing observations. Feature engineering was also employed, most notably for our primary outcome variable, the Black-to-White HIV-related death rate ratio (MRR).
 
 ### Outcome Variables
 
-The primary response variable in this analysis is the ratio of Black-to-White HIV-related death rate (MRR). To compute this variable, feature engineering was performed to create `death rate (estimated)` stratified by race (Black and White) using counts of HIV related deaths divided by the estimated population based on US Census data multiplied by 100,000 persons. The variable `MRR` was then computed for each state by dividing the estimate death rates for Black persons divided by the estimate death for White persons.
+The primary response variable in this analysis is the ratio of Black-to-White HIV-related death rate (MRR). To compute this variable, feature engineering was performed to create `death rate (estimated)` stratified by race (non-Hispanic Black and non-Hispanic White) using counts of HIV related deaths divided by the estimated population based on US Census data multiplied by 100,000 persons. Then, I computed `MRR` by obtaining the ratio of the estimated HIV-related death rate for non-Hispanic Black persons divided by the estimate HIV-related death rate for non-Hispanic White persons.
 
-### Social Determinants of Health
+### Predictors
 
-Predictors used in this analysis were selected to serve as proxy for SDOH. A number of variables were initially considered, but ultimately five predictors were selected: the Gini coefficient was used measure income inequality; percent living in poverty was used to estimate economic stability; percent uninsured under 65 was used to measure health care access; and percent without internet subscription was used to estimate the neighborhood and built environment; and percent living with food insecurity.
+Predictors used in this analysis were selected to serve as indicators for various aspects relating to SDOH, including access to healthcare, the built environment, and economic stability. A number of variables were initially considered, but ultimately five predictors were selected: the median household income (in US dollars); percent living in poverty (% of population); percent uninsured under 65 (% of population); percent without internet subscription(% of population); and percent living with food insecurity (% of population). Percentage diagnosed late is the percentage of persons diagnosed with HIV who progressed to AIDS within 12 months of diagnosis.
 
-## Statistical Analysis
+### Statistical Analysis
 
-The goal of this analysis was to assess the spatial distribution of the Black-to-White HIV-related MRR. A number of predictors were analyzed using simple linear regression to predict MRR. Variables with a correlation coefficient of \|-0.15\| or more were selected as possible predictors. To address the possibility of multicollinearity between predictors, principal component analysis was then performed on these variable to aid in variable reduction.
+The primary objective of this analysis was to examine the spatial distribution of the Black-to-White HIV-related MRR. Simple linear regression was conducted to explore possible predictors of MRR, selecting variables with a correlation coefficient of \|-0.15\| or more. Principal component analysis was used to reduce dimensionality and remove multicollinearity.
 
-Both non-spatial and spatial models were fitted to data as appropriate. Analysis of the full models began with multiple linear regressions model before moving on to models of increasing complexity, such as Poisson regression and the conditional autoregressive (CAR) model. Models that were flexible to continuous data used `MRR` as the primary outcome, while models that required count data used the number of deaths, `Death Cases` , and used `log(Population)` as the offset, and additionally included variables `Race` and `Region` in the models.
+To test for spatial correlation, Moran's I was employed. One assumption of using Moran's I in hypothesis testing is that the data follow a normal distribution. Normality was assessed visually using a histogram and verified with a Shapiro-Wilke test. The analysis utilized the following neighborhood structure:
 
-Model comparison and relative goodness of fit of the various models used in this analysis was assessed using the Akaike information criterion (AIC).
+hij { 1, if counties i and j share a county line; 0, if otherwise.
 
-Moran's *I* was computed to test the null hypothesis of spatial independence.
+Several regression models were employed, including multiple linear regression, negative binomial regression, and the conditional autoregressive model.
 
-# Analysis
+Multiple linear regression requires several key assumptions to be met, including linearity, normality of the response variable (MRR), and addressing the issue of multicollinearity. These assumptions were checked using scatterplots, visual assessment, Shapiro test, and PCA.
 
-## Univariate analysis
+Given that the case data for HIV-related mortality tends to be heavily right-skewed, a Poisson regression model was evaluated, which assumes that the variance and mean are equal. However, when the conditional variance is greater than the conditional mean, overdispersion occurs. In this case, the negative binomial regression model, which can accommodate overdispersion, was considered.
 
-Our primary outcome of interest was the Black-to-White HIV-related MRR, which was computed as described above. Table 1 shows the overall number of HIV-related deaths, population size older than 12 years, death rate and the MRR in the United States in 2020. The rate of HIV-related deaths among this Black persons was 7.2 times high than the rate of HIV-related deaths among White persons.
+Finally, the conditional autoregressive (CAR) model, a type of linear regression model that can account for spatial association between neighbors, was employed. The CAR model's assumptions are conditional on the data at remaining site {*z~i~* ∶ *j* ≠*i*}, are normally distributed data Z(*s~i~*), and there are only pairwise spatial interactions.
 
-```{r, echo=FALSE, message=FALSE, fig.cap="Table 1."}
+To compare models and assess relative goodness of fit, the Akaike information criterion (AIC) was used, where smaller values indicate better fit.
+
+# Results
+
+## Univariate Analysis
+
+Our primary outcome of interest was the Black-to-White HIV-related MRR, which was computed for each state by dividing the estimate death rates for non-Hispanic Black persons divided by the estimate death for White persons. Table 1 shows the overall number of HIV-related deaths, population size older than 12 years, death rate and the MRR in the United States in 2020. The rate of HIV-related deaths among this Black persons was 7.2 times high than the rate of HIV-related deaths among White persons.
+
+```{r, echo=FALSE, message=FALSE, fig.cap="Table 1. Population Charactertistics"}
 include_graphics(here("results/table1.png"))
 ```
 
-```{r, echo=FALSE, message=FALSE, fig.cap="Figure 1."}
+To assess the distribution of Black-to-White HIV-related MRR in the US in 2020, we conducted a visual assessment ( @fig-include-MRR ) and a Shapiro-Wilks test. Our results showed that the distribution followed a normal distribution `(p= 0.63)`, and no normalizing transformations were needed. @fig-include-DR shows the histogram of the raw HIV-related death rate by race, which highlights significant racial disparities in risk of HIV-related death.
+
+```{r, echo=FALSE, message=FALSE, fig.width= 3, fig.cap="Histogram of Black-to-White HIV-Related Mortality Rate Ratio", label = fig-include-MRR}
 include_graphics(here("results/MRR_hist.png"))
 ```
 
-Visual assessment (Figure 1) and Shapiro test were congruent that the distribution of Black-to-White HIV-related MRR in the US in 2020 followed a normal distribution (*p* = 0.63). No normalizing transformation was needed. Below is the histogram of the our primary outcome variable, MRR.
-
-After verifying that the Black-to-White HIV-related MRR met assumptions of normality, I tested for spatial association of the Black-to-White MRR by computing Moran's *I* (*`I`* `= 0.1507`). For uncorrelated data, the expected value of Moran's *I* was `E(I) = - 0.0213` with a variance `var(I) = 0.0095`. The data showed statistically significant evidence of spatial dependence `(z =1.768; p = 0.039)`. Figure 2 shows a Moran's scatter plot of spatially lagged Black-to-White HIV-related MRR and Black-to-White HIV-related MRR. The positive slope indicates that there is a degree of spatial clustering of the Black-to-White HIV-related MRR.
-
-```{r, echo=FALSE, message=FALSE, fig.width = 4, fig.cap="Figure 2. Moran's Scatter Plot"}
-include_graphics(here("results/moran_mrr.png"))
+```{r, echo=FALSE, message=FALSE, fig.width= 3, fig.cap="Histogram of HIV-Related Death Rates", label = fig-include-DR}
+include_graphics(here("results/DR_hist.png"))
 ```
 
-Figure 3 and 4 show the raw HIV-related death rate by Race and State.
+To further explore the racial disparities in HIV-related mortality, we compared the Black-to-White HIV-related mortality rate ratio (MRR) by state ( @fig-include-state ) and by region ( @fig-include-region ). Four states, namely Idaho, Montana, Wyoming, and Vermont, did not have an estimate for MRR due to small or suppressed rates. The results from these figures reveal distinct disparities between the rate of HIV-related death by race and region. States in the Northeast region had the highest median Black-to-White HIV-related MRR, with a ratio of approximately 8.5, while states in the West region had the lowest median Black-to-White HIV-related MRR, at approximately 4.0.
 
-```{r, echo=FALSE, message=FALSE, fig.cap="Figure 3. Bargraph of Raw HIV-Related Death Rates by Race by State, 2020, United States"}
-include_graphics(here("results/dr_state.png"))
+```{r, echo=FALSE, message=FALSE, fig.cap="Bargraph of Black-to-White HIV-Related MRR", label = fig-include-state}
+include_graphics(here("results/mrr_state.png"))
 ```
 
-```{r, echo=FALSE, message=FALSE, fig.cap="Figure 4. Boxplot of HIV-Related Death by Race by Region, 2020, United States"}
-include_graphics(here("results/dr_region.png"))
-```
-
-Figure 5 compares the raw HIV-related death rate by Race and Region. These plots again show distinct disparities between rate of HIV-related death by race. Additionally, there is evidence of disparities in HIV-related death rate by region for Black persons.
-
-Table 2 shows maps of selected predictors in the United States in 2020. We can see that the `Gini Coefficient` was generally higher in Southern half of the country, indicating a greater degree of income inequality. `Percent Uninsured Under 65 Years Old` was highest in Texas, with the South and non-coastal Western states also appearing to have higher rates of uninsured. `Percent Without an Internet Subscription` was generally low through the United States, however, Wyoming had the highest percent without Internet subscription.
-
-```{r, echo=FALSE, message=FALSE, fig.cap="Table 2", fig.align = "default"}
-include_graphics(here("results/grid_map.png"))
+```{r, echo=FALSE, message=FALSE, fig.cap="Boxplot of Black-to-White HIV-Related MRR, by Region", label = fig-include-region}
+include_graphics(here("results/mrr_region.png"))
 ```
 
 ## Bivariate Analysis and Principal Component Analysis
 
-To narrow down potential predictors to include in later models, I first started by performing simple linear regression models of MRR vs one of the possible predictors. Variables that had a correlation coefficient of \|0.15\| or more were then selected as possible variables for analysis. These possible predictors were then scaled and principal component analysis (PCA) was performed.
+Bivariate analysis and principal component analysis (PCA) were conducted to identify potential predictors associated with HIV-related MRR. Firstly, bivariate analysis was used to narrow down the range of predictors, where only variables with a correlation coefficient of \|0.15\| or more were included in the next step. @fig-include-bivar displays the results of the bivariate analysis, which includes the following predictors: `Percent Living in Poverty`, `Median Household Income`, `Percent Uninsured Under 65 Years Old`, `Percent Living with Food Insecurity`, `Percent Without an Internet Subscription`, and `Percentage Diagnosed Late`.
 
-```{r, echo=FALSE, message=FALSE, fig.cap="Table 2. Simple Linear Regression between Outcome and Individual Predictors", fig.align = "default"}
+```{r, echo=FALSE, message=FALSE, fig.cap="Simple Linear Regression of Outcome vs. Select Predictors", fig.align = "default",label = fig-include-bivar}
 include_graphics(here("results/grid_bivar.png"))
 ```
 
+Following the bivariate analysis, PCA was performed on the selected predictors. The PCA was based on a correlation matrix and resulted in a scaled and centered matrix. @fig-include-pca shows the results of the PCA, where only principal components (PCs) that individually explained more than 16.7% variation were included in the analysis. PC1 accounted for 56.6% of variation, while PC2 accounted for 17.1% of variance. All other PCs were excluded from the analysis. PC1 had strong positive associations with median household income and negative associations with percent living in poverty, percent without an internet subscription, and percent living with food insecurity. PC2 showed very strong negative associations with the percentage diagnosed late.
 
-Table 3. shows the plot from the bivariate analysis of predictors that were scaled and included in the PCA. Table 3 shows the results of PCA.
-
-```{r, echo=FALSE, message=FALSE, fig.cap="Table 3", fig.align = "default"}
+```{r, echo=FALSE, message=FALSE, fig.cap="Results of Principal Component Analysis", fig.align = "default",label = fig-include-pca}
 include_graphics(here("results/grid_pca.png"))
 ```
 
-Results of the PCA shows that the first principal component contributed for 91.7 % of variation between predictors. The variables `Percent Uninsured Under 65 Years Old` explained the least amountof variation. Ultimately, only `Median Household Income`, `Percent Living in Poverty`, `Percent Living with Food Insecurity`, and `Percent Without an Internet Subscription` were included as predictors in the full model.
+@fig-include-map provides a visual representation of the selected predictors using maps. The South generally had higher percentages of persons living in poverty, living with food insecurity, and persons uninsured under 65 years old, and had lower median household income. The percentage of persons diagnosed late was consistent throughout much of the United States. Interestingly, states with the highest percentage of persons with HIV who were diagnosed late were neighbored by states with the lowest rates. The percentage without an internet subscription was generally low throughout the United States, but was highest in Wyoming.
 
-## Full analysis
-
-```{r, echo=FALSE, message=FALSE, fig.cap="Figure.4"}
-include_graphics(here("results/car_fit_map.png"))
+```{r, echo=FALSE, message=FALSE, fig.cap="Maps of Selected Proxies for Social Determinants of Healths", fig.align = "default", label = fig-include-map}
+include_graphics(here("results/grid_map.png"))
 ```
 
-```{r, echo=FALSE, message=FALSE, fig.cap="Figure.5"}
-include_graphics(here("results/mult_fit_map.png"))
+## Full Models
+
+### Multivariate Linear Model
+
+The results of the multivariate linear model indicate a statistically significant positive association between Black-to-White HIV-related MRR and PC1 (*`p`* `< 0.005`), as well as a statistically significant negative association between MRR and PC2 (*`p`* `= 0.038`).
+
+```{r, echo=FALSE, message=FALSE, fig.cap="Table 2. Summary of Multivariate Linear Model", fig.align = "default"}
+include_graphics(here("results/mult_table.png"))
 ```
 
-```{r, echo=FALSE, message=FALSE, fig.cap="Figure.6"}
-include_graphics(here("results/grid_pred.png"))
+### Negative Binomial Regression Model
+
+The negative binomial regression model was selected over Poisson regression model due to overdispersion (*`c`* `= 17.35`). In order to use this regression method, I use the number of HIV-related deaths in each state using log(Population) as an offset, and race, PC1 and PC2 as predictors, using non-Hispanic White persons as the reference group. Regression coefficients were exponentiated, resulting in rate ratios. The HIV-related MRR was 6.46 times higher among non-Hispanic Black persons than non-Hispanic White persons `(95% CI = (5.28, 7.93); z = 17.96; p` `< 0.005)`. The Black-to-White HIV-related MRR decreased with increasing components of PC1, while Black-to-White HIV-related MRR increased with increasing components of PC2, but these results were not statistically significant (*`p`* `= 0.13` and *`p`* `= 0.14` , respectively).
+
+```{r, echo=FALSE, message=FALSE, fig.cap="Table 3. Summary of Negative Binomial Model (exponentiated)", fig.align = "default"}
+include_graphics(here("results/nb_table.png"))
 ```
 
-The CAR model accounting for spatial variation only performed marginally better than the GLM model that did not account for spatial variation.
+### Conditional Autoregressive Model (CAR)
+
+The conditional autoregressive model (CAR) indicated a statistically significant positive association between Black-to-White HIV-related MRR and PC1, (*`p`* `< 0.005`), after accounting for spatial dependence, while evidence of a negative association between Black-to-White HIV-related MRR and PC2 was not statistically significant (*`p`* `= 0.38`).
+
+```{r, echo=FALSE, message=FALSE, fig.cap="Table 4. Summary of CAR Model", fig.align = "default"}
+include_graphics(here("results/car_table.png"))
+```
+
+## Results
+
+In 2020, a total of 13,173 HIV-related deaths occurred among non-Hispanic Black and non-Hispanic white populations in the United States, with a Black-to-White HIV-related MRR of 7.2 indicating significant racial disparities. @fig-include-rate displays the estimated HIV-related death rate for non-Hispanic Black and non-Hispanic White persons in the United States in 2020, highlighting significant regional differences, with the highest rates observed among non-Hispanic Black persons, particularly in the South region. On the other hand, non-coastal western states consistently exhibited the lowest rates of HIV-related deaths across the selected racial/ethnic groups. Additionally, no state in 2020 had an HIV-related death rate higher than \~10 per 100,000 among non-Hispanic White persons.
+
+```{r, echo=FALSE, message=FALSE, fig.cap="HIV-Related Mortality Rate, by Race/Ethnicity", label = fig-include-rate}
+include_graphics(here("results/raw_rate_map.png"))
+```
+
+To evaluate the spatial dependence of the data, Moran's test was performed on Black-to-White HIV-related MRR. The results showed statistically significant evidence of spatial dependence `(z = 1.768; p = 0.039)`, with a Moran's *I* value of `0.1507`, indicating a degree of clustering of the Black-to-White HIV-related MRR. For uncorrelated data, the expected value of Moran's *I* was *`E(I)`* `= -0.0213` with a variance *`var(I)`* `= 0.0095`. @fig-include-moran shows a Moran's scatter plot of spatially lagged Black-to-White HIV-related MRR and Black-to-White HIV-related MRR, depicting a positive slope indicative of clustering.
+
+```{r, echo=FALSE, message=FALSE, fig.width = 3, fig.cap="Moran's Scatter Plot", label = fig-include-moran}
+include_graphics(here("results/moran_mrr.png"))
+```
+
+In the full analysis, PC1 and PC2, which represented multiple indicators of social determinants of health, along with the percentage of persons diagnosed late, were used to assess the associated racial disparity in HIV-related death rates. The CAR model, accounting for spatial variation in the data, performed marginally better than the non-spatial generalized linear model, with an AIC of 503.18. Despite the slight differences, considering the results of Moran's test, the CAR model was selected as the best-performing model, as use of the spatial model was also supported by evidence of clustering from by the Moran's test. Table 5 provides a comparison of AIC across models.
+
+The CAR model showed statistically significant evidence of a positive association between Black-to-White HIV-related MRR and PC1; higher levels of component 1 are associated with higher levels of the Black-to-White HIV-related MRR. Since PC1 is positively associated with median household income and negatively associated with poverty, lack of internet subscription, and food insecurity, this suggests that higher levels of income and lower levels of poverty, lack of internet access, and food insecurity are associated with higher Black-to-White HIV-related MRR.
+
+```{r, echo=FALSE, message=FALSE, fig.cap="Table 5. Relative Comparison of Goodness of Fit", label = tab}
+include_graphics(here("results/table_fit.png"))
+```
+
+@fig-include-mrr shows maps comparing the raw Black-to-White HIV-related MRR, fitted values from the CAR model, and the ratio of predicted over observed values. States with zero or suppressed counts for HIV-related deaths among non-Hispanic Black persons (Idaho, Montana, Wyoming, Vermont) are represented in dark green. @fig-include-mrr (c) shows that the model performed relatively well in the Northeast and South, as indicated by the light greens, which represent values closer to 1. The West coast states are represented in orange, indicating that the model over-predicted the disparity between HIV-related MRR between Black and White persons in these regions.
+
+```{r, echo=FALSE, message=FALSE, fig.cap="Maps of Black-to-White HIV-Related Mortality Rate Ratio", label = fig-include-mrr}
+include_graphics(here("results/grid_mrr.png"))
+```
 
 {{< pagebreak >}}
 
 # Discussion
 
-## Summary and Interpretation
+There are significant disparities in HIV-related mortality rates between non-Hispanic Black and non-Hispanic White populations in the United States. This study found spatial associations of this disparity with five indicators of SDOH: median household income, percent living in poverty, percent uninsured under 65, percent without internet subscription, and percent living with food insecurity. This analysis found evidence of a spatial association with higher Black-to-White HIV-related MRR and higher median household income and lower rates of poverty, Internet subscription, and food insecurity. While these findings were somewhat surprising, they helped reveal that HIV-related health disparities are complex, and other factors likely contribute to high HIV-related mortality rates among non-Hispanic Black persons.
 
-*Summarize what you did, what you found and what it means.*
+This study has several limitations that should be addressed. Firstly, while the Black-to-White HIV-related mortality rate ratio can be used to identifying areas with significant racial disparities in HIV-related mortality rates, it may not accurately reflect areas with where HIV deaths are especially high. Additionally, this study is vulnerable to ecological fallacy, as the data was aggregated at the state-level, which can potential mask individual-level relationships between the predictors and outcome variable. Furthermore, state-level data may not capture the variation in HIV-related health disparities within states, such as differences in risk factors and outcomes between urban and rural populations or those between different racial and ethnic groups. Another limitation is that the neighborhood structure used in this study may not capture the true relationships between neighboring counties. In Georgia, this might particularly be an issue, since county sizes and shapes differ significantly. Including additional neighborhood structures in the analysis, such as one that defines neighbors based on those that lay within *x* distance of one another, may be a better approach. Finally, the analysis is limited to the 2020 and to non-Hispanic Black and non-Hispanic White persons, and may not reflect changes over time or across other racial and ethnic groups.
 
-## Strengths and Limitations
+Strengths of this study included the use of multiple predictors to assess the relationship between SDOH and the Black-to-White HIV-related MRR. Additionally, use of various regression models, including non-spatial and spatial methods, allowed for a more comprehensive analysis of the data. The use of PCA helped to address multicollinearity issues among the predictors.
 
-*Discuss what you perceive as strengths and limitations of your analysis.*
-
-# Conclusions
-
-*What are the main take-home messages?*
-
-*Include citations in your Rmd file using bibtex, the list of references will automatically be placed at the end*
-
-Note that this cited reference will show up at the end of the document, the reference formatting is determined by the CSL file specified in the YAML header. Many more style files for almost any journal [are available](https://www.zotero.org/styles). You also specify the location of your bibtex reference file in the YAML. You can call your reference file anything you like, I just used the generic word `references.bib` but giving it a more descriptive name is probably better.
+This analysis highlights the need for targeted interventions to address HIV-related health disparities. Future research would greatly benefit from analyzing individual-level data to better understand factors contributing to HIV-related racial disparities, as well as utilizing additional neighborhood structures, and a broader range of years. 
 
 {{< pagebreak >}}
 
-## Software
+# Software
+
 ```{r}
 sessionInfo() 
 ```
+
 {{< pagebreak >}}
 
 # References

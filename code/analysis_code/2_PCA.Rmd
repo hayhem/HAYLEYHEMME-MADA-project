@@ -6,31 +6,24 @@ library(here)
 library(knitr)
 library(tidyverse)
 library(broom)
-library(pls)
 
-race_sub <- readRDS(here("data/processed_data/race_alt.rds"))
-race_sub <- race_sub %>% ungroup()
+race_sub <- readRDS(here("data/processed_data/race_alt.rds")) 
+
 pos_predictors <- readRDS(here("data/processed_data/pos_predictors.rds"))
-sub <-race_sub %>% 
-  select(contains(c("State", "Race", "Ratio")), matches(pos_predictors))
 ```
 
 PCA
 ```{r}
 #Setting up correlation matrix
 pca_1 <- race_sub %>% 
-  ungroup() %>% 
-  select(all_of(pos_predictors)) %>% 
-  select(-contains("Late")) %>%  ##poorly correlated
+  dplyr::select(all_of(pos_predictors)) %>% 
   cor() %>% 
   ggcorrplot()
 
 # selects variables of interest and scale
 pca <- race_sub %>% 
-  select(matches(pos_predictors)) %>% 
-  select(-contains("Late")) %>% 
+  dplyr::select(matches(pos_predictors)) %>% 
   princomp(cor = TRUE)
-
 ```
 
 ```{r}
@@ -44,12 +37,14 @@ print(pca$loadings[, 1:2])
 
 #Storing PCA scores to use for fitting model
 prin_comp1 <- pca$scores[,1]
+prin_comp2 <- pca$scores[,2]
 
 ## save
 saveRDS(prin_comp1, here("data/processed_data/prin_comp1.rds"))
+saveRDS(prin_comp2, here("data/processed_data/prin_comp2.rds"))
 ```
 
-Since we originally had 6 variables, we should only look at components that (individually) explain more than 16.67% of variation. This is includes principal component 1 and 2. All other principal components will be excluded. 
+Since we originally had 6 variables, we should only look at components that (individually) explain more than 16.7% of variation. This is includes principal component 1 and 2. All other principal components will be excluded. 
 
 ```{r}
 #Contribution of each variable 
@@ -58,7 +53,7 @@ pca_3 <-print(fviz_cos2(pca, choice = "var", axes = 1:2))
 # Biplot of the attributes
 pca_4 <- print(fviz_pca_var(pca, col.var = "cos2",
                    gradient.cols = c("darkblue", "orange", "green"),
-                   repel = TRUE, title = "PCA"
+                   repel = TRUE, title = "Loading Plot"
                    ))
 # Variables in green are a good representation of the variable on that component.
 ```

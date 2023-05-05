@@ -1,12 +1,6 @@
 ```{r message=FALSE, warning=FALSE}
 library(here)
-library(spdep)
-library(GGally)
-library(skimr)
 library(ggfortify)
-library(MASS)
-library(ggcorrplot)
-library("FactoMineR")
 library(tidyverse)
 library(broom)
 library(knitr)
@@ -32,6 +26,7 @@ us_nabs <- us_nabs %>%
          !grepl("DC", StateCode))
 ```
 
+Creating variable for region
 ```{r}
 states <- data.frame(state.name)
 states$Region <- case_when(
@@ -48,14 +43,6 @@ race_sub <- race_sub %>%
          !grepl("Hawaii", State))
 ```
 
-Let's create a variable for mortality rate ratio of Black/ White
-```{r}
-race_sub <- race_sub %>%
-  group_by(State) %>%
-  mutate(MRR = `Death Rate (estimated)`[Race == "Black"] / `Death Rate (estimated)`[Race == "White"])
-```
-
-
 Let's start by looking at the overall HIV-related death rate by race in the United States.
 ```{r}
 table1 <- race_sub %>% 
@@ -71,11 +58,11 @@ table1 <- race_sub %>%
                       "Death Rate \n (per 100,000)",
                       "Mortality Rate Ratio"),
         caption = "<center>HIV-Related Deaths by Race/ Ethnicity, United States, 2020</center>",
-        align = "c") %>%
+        align = "c", format.args = list(big.mark = ",")) %>%
   kable_minimal() %>%
-  kable_styling(font_size = 30)%>%
+  kable_styling(font_size = 50)%>%
 gsub("font-size: initial !important;",
-"font-size: 30pt !important;",
+"font-size: 50pt !important;",
 .)  %>% 
   landscape()  
 
@@ -101,11 +88,11 @@ region_table <- race_sub %>%
                       "Population \n (>12 years old)",
                       "Death Rate \n (per 100,000)",
                       "Mortality Rate Ratio"),
-        caption = "<center>HIV-Related Deaths by Region, United States, 2020</center>") %>% 
+        caption = "<center>HIV-Related Deaths by Region, United States, 2020</center>", format.args = list(big.mark = ",")) %>% 
   kable_minimal() %>%
-  kable_styling(font_size = 30) %>%
+  kable_styling(font_size = 50) %>%
 gsub("font-size: initial !important;",
-"font-size: 30pt !important;",.)  %>% 
+"font-size: 50pt !important;",.)  %>% 
   landscape()  
 
 region_table
@@ -118,60 +105,58 @@ region_table %>%
 
 We can seen that Black persons accounts for the 43.5% of HIV-related deaths in United States, and the rate of HIV-related deaths among this population was 7.2 times high than the rate of HIV-related deaths among White persons.
 
-Next, let's take a look at our response variable
-Univariate Analysis
-
-Let's take a look at some box plots of death rate by races and state. 
-We'll start by looking at death rate given by the AIDSVu dataset. 
-```{r}
-race_sub %>% 
-  ggplot() +
-  geom_boxplot(aes(y = `Death Rate (estimated)`, x = Race, group = Race)) + 
-  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio, United States, 2020", y = "Ratio", x = "Race/ Ethnicity") + theme(legend.position = "none") 
-```
-
-Histogram
+Next we'll look into the distribution of our response variable
 ```{r}
 race_sub %>% 
   filter(Race == "Black") %>% 
   ggplot() +
   geom_histogram(aes(x = `MRR`), bins = 10) + 
   theme(legend.position = "none") +
-  labs(title = "Histogram of Black-to-White HIV-Related Mortality Rate Ratio, United States, 2020", y = "n", x = "Ratio") + theme_classic()
-ggsave(here("results/MRR_hist.png"), units="in", width=10, height=7, dpi=300)
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio, United States, 2020", y = "n", x = "Ratio") + theme_classic()
+ggsave(here("results/MRR_hist.png"), units="in", width=10, height=5, dpi=300)
 
 race_sub %>% 
    filter(Race == "Black") %>% 
   pull(`MRR`) %>% 
   shapiro.test()
 
+```
+
+Let's also look at the distribution of HIV-related death rate
+```{r}
 race_sub %>% 
   ggplot() +
-  geom_boxplot(aes(y = `Death Rate (estimated)`, x = Race, group = Race)) + 
+  geom_histogram(aes(x = `Death Rate (estimated)`, fill = Race), bins = 20) + 
   theme(legend.position = "none") +
-  labs(title = "HIV-Related Death Rate, by Race, United States, 2020", y = "Rate (per 100,000)", x = "Race") + theme_classic()
-ggsave(here("results/dr_race_bp.png"), units="in", width=10, height=5, dpi=300)
+  labs(title = "HIV-Related Death Rate, United States, 2020", y = "n", x = "Deaths per 100,000") +
+  theme_classic()
+ggsave(here("results/DR_hist.png"), units="in", width=10, height=5, dpi=300)
+
+```
+
+Let's take a look at MRR by state and region
+```{r}
+race_sub %>% 
+  ggplot() +
+  geom_bar(aes(y = `MRR`, x = `State Abbreviation`, group = `State Abbreviation`),
+           stat = "identity", position = "dodge") +
+  theme_classic() + 
+  theme(legend.position = "bottom") +
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio, by State, United States, 2020", y = "Ratio", x = "State")
+ggsave(here("results/mrr_state.png"), units="in", width=12, height=5, dpi=300)
 
 race_sub %>% 
   ggplot() +
-  geom_bar(aes(y = `Death Rate (estimated)`, x = `State Abbreviation`, group = `State Abbreviation`, fill = Race),
-           stat = "identity", position = "dodge") + theme_classic() + 
+  geom_boxplot(aes(y = `MRR`, x = `Region`, group = `Region`)) +
+  theme_classic() + 
   theme(legend.position = "bottom") +
-  labs(title = "HIV-Related Death Rate of Black and White Persons, by State, United States, 2020", y = "Rate (per 100,000)", x = "State")
-ggsave(here("results/dr_state.png"), units="in", width=12, height=5, dpi=300)
-
-
-race_sub %>% 
-  ggplot() +
-  geom_boxplot(aes(y = `Death Rate (estimated)`, x = `Region`, group = `Region`)) + theme_classic() + 
-  theme(legend.position = "bottom") +
-  labs(title = "HIV-Related Death Rate of Black and White Persons, by Region, United States, 2020", y = "Rate (per 100,000)", x = "Region") + facet_wrap(.~ Race)
-ggsave(here("results/dr_region.png"), units="in", width=12, height=5, dpi=300)
+  labs(title = "Black-to-White HIV-Related Mortality Rate Ratio, by Region, United States, 2020", y = "Ratio", x = "Region")
+ggsave(here("results/mrr_region.png"), units="in", width=12, height=5, dpi=300)
 ```
 
 Let's move on to
 Bivariate Analysis 
-We will deem variables with a correlation coeffiencient of |0.15| as important, and will include these in PCA
+We will deem variables with a correlation coefficient of |0.15| as important, and will include these in PCA
 ```{r}
 bi_1 <- ggplot(race_sub, aes(y = MRR, x = `Percent Living in Poverty`)) +
   geom_smooth(method = "lm") + 
@@ -300,8 +285,7 @@ Now that we have an idea of the relationship between our outcome and potential p
 
 ```{r}
 pos_predictors <- race_sub %>%
-  ungroup() %>% 
-  select(c("Median Household Income",
+  dplyr::select(c("Median Household Income",
            "Percent Living in Poverty",
            "Percent Without an Internet subscription",
            "Percent Uninsured Under 65 Years Old",
